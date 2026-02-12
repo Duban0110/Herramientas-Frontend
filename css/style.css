@@ -117,10 +117,11 @@ main { max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem; }
 .card p { font-size: 2rem; font-weight: 800; color: var(--dark); }
 
 /* --- CATÁLOGO Y GRILLA --- */
-.tools-grid { 
-    display: grid; 
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
-    gap: 2rem; 
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
 }
 .tool-card { 
     background: var(--white); 
