@@ -459,3 +459,143 @@ window.confirmarDevolucion = async function (reservaId) {
         console.error("Error:", e);
     }
 };
+
+/**
+ * --- GESTIÓN ADMINISTRATIVA ---
+ */
+
+// Función para ver el resumen de reportes
+window.verDashboardAdmin = async function () {
+    const token = localStorage.getItem('jwt');
+    const display = document.getElementById('data-display');
+    if (!display) return;
+
+    try {
+        display.innerHTML = '<p style="color:white; padding:20px;">Generando reporte global...</p>';
+        
+        // El endpoint debe coincidir con tu AdminController
+        const response = await fetch(`${API_URL}/admin/dashboard`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const stats = await response.json();
+            display.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; width: 100%; padding: 10px;">
+                    <div style="background: #1e293b; padding: 25px; border-radius: 12px; border-top: 4px solid #38bdf8; text-align: center;">
+                        <h4 style="color: #94a3b8; margin: 0; text-transform: uppercase; font-size: 0.8rem;">Herramientas Totales</h4>
+                        <p style="font-size: 2.5rem; color: white; margin: 10px 0; font-weight: bold;">${stats.totalHerramientas || 0}</p>
+                    </div>
+                    <div style="background: #1e293b; padding: 25px; border-radius: 12px; border-top: 4px solid #10b981; text-align: center;">
+                        <h4 style="color: #94a3b8; margin: 0; text-transform: uppercase; font-size: 0.8rem;">Alquileres Realizados</h4>
+                        <p style="font-size: 2.5rem; color: white; margin: 10px 0; font-weight: bold;">${stats.totalReservas || 0}</p>
+                    </div>
+                    <div style="background: #1e293b; padding: 25px; border-radius: 12px; border-top: 4px solid #f59e0b; text-align: center;">
+                        <h4 style="color: #94a3b8; margin: 0; text-transform: uppercase; font-size: 0.8rem;">Ingresos Totales</h4>
+                        <p style="font-size: 2.5rem; color: #10b981; margin: 10px 0; font-weight: bold;">$${stats.gananciasTotales || 0}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            display.innerHTML = `<p style="color:red; padding:20px;">Error al obtener estadísticas (Status: ${response.status}).</p>`;
+        }
+    } catch (e) {
+        console.error("Error en dashboard admin:", e);
+        display.innerHTML = '<p style="color:red; padding:20px;">Error de conexión con el servidor.</p>';
+    }
+};
+
+// Función para ver y gestionar usuarios
+window.listarUsuarios = async function () {
+    const token = localStorage.getItem('jwt');
+    const display = document.getElementById('data-display');
+
+    try {
+        display.innerHTML = '<p style="color:white; padding:20px;">Consultando base de datos de usuarios...</p>';
+        const response = await fetch(`${API_URL}/usuarios`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const usuarios = await response.json();
+            display.innerHTML = `
+                <div style="overflow-x: auto; padding: 10px;">
+                    <table style="width: 100%; color: white; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden;">
+                        <thead style="background: #334155; color: #38bdf8;">
+                            <tr>
+                                <th style="padding: 15px; text-align: left;">ID</th>
+                                <th style="padding: 15px; text-align: left;">Usuario</th>
+                                <th style="padding: 15px; text-align: left;">Email</th>
+                                <th style="padding: 15px; text-align: left;">Rol</th>
+                                <th style="padding: 15px; text-align: center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${usuarios.map(u => `
+                                <tr style="border-bottom: 1px solid #334155; transition: 0.3s; cursor: default;">
+                                    <td style="padding: 15px;">#${u.id}</td>
+                                    <td style="padding: 15px; font-weight: bold;">${u.nombre} ${u.apellido}</td>
+                                    <td style="padding: 15px; color: #94a3b8;">${u.correo}</td>
+                                    <td style="padding: 15px;">
+                                        <span style="background: ${u.rol === 'ADMINISTRADOR' ? '#7c3aed' : '#2563eb'}; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">
+                                            ${u.rol}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 15px; text-align: center;">
+                                        <button onclick="window.eliminarUsuario(${u.id})" 
+                                                style="background: #ef4444; border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+    } catch (e) {
+        console.error("Error listando usuarios:", e);
+    }
+};
+
+// Función para eliminar usuario (Opcional pero recomendada)
+window.eliminarUsuario = async function (id) {
+    // 1. Mensaje de confirmación (Ventana emergente del navegador)
+    const confirmar = confirm("⚠️ ¿Estás seguro de que deseas eliminar a este usuario? \nEsta acción no se puede deshacer y podría fallar si el usuario tiene registros asociados.");
+
+    if (!confirmar) {
+        return; // Si el admin cancela, no hace nada
+    }
+
+    const token = localStorage.getItem('jwt');
+
+    try {
+        // 2. Petición al servidor
+        const response = await fetch(`${API_URL}/usuarios/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            alert("✅ Usuario eliminado exitosamente.");
+            
+            // 3. Refrescar la lista de usuarios automáticamente
+            if (typeof window.listarUsuarios === 'function') {
+                window.listarUsuarios();
+            }
+        } else if (response.status === 403) {
+            alert("🚫 No tienes permisos suficientes para realizar esta acción.");
+        } else {
+            const errorData = await response.json().catch(() => ({}));
+            alert(`❌ No se pudo eliminar: ${errorData.message || 'El usuario tiene herramientas o reservas activas.'}`);
+        }
+    } catch (error) {
+        console.error("Error al eliminar usuario:", error);
+        alert("conexión perdida con el servidor.");
+    }
+};
+
