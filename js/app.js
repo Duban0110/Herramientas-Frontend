@@ -107,67 +107,94 @@ function cargarVistaPorRol(rol) {
     switch (userRol) {
         case 'ROLE_ADMINISTRADOR':
             htmlContent = `
-                <section class="admin-panel">
-                    <div class="header-flex" style="display:flex; justify-content:space-between; margin-bottom:20px;">
-                        <h2>🛡️ Panel de Administración</h2>
-                        <div style="display:flex; gap:10px;">
-                            <button onclick="window.verDashboardAdmin()" class="btn-primary">📈 Reportes</button>
-                            <button onclick="window.listarUsuarios()" class="btn-primary">👥 Usuarios</button>
-                        </div>
-                    </div>
-                    <div id="data-display" class="tools-grid">Cargando...</div>
-                </section>`;
-            callback = () => window.verDashboardAdmin();
-            break;
+    <section class="admin-panel fade-in">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2rem; border-bottom:2px solid var(--primary); padding-bottom:1rem;">
+            <h2 style="text-transform:uppercase; font-weight:900; letter-spacing:1px;">🛡️ Control de Gestión</h2>
+            <div style="display:flex; gap:10px;">
+                <button onclick="window.verDashboardAdmin()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem;">📈 Reportes Globales</button>
+                <button onclick="window.listarUsuarios()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem; background:var(--accent);">👥 Base de Usuarios</button>
+            </div>
+        </div>
+        <div id="data-display">
+            <div class="loader" style="padding:20px; color:var(--primary); font-weight:bold;">Sincronizando datos...</div>
+        </div>
+    </section>`;
+callback = () => window.verDashboardAdmin();
+break;
 
         case 'ROLE_PROVEEDOR':
 
-            htmlContent = `
-<section class="proveedor-panel">
-    <div class="header-flex" style="display:flex; justify-content:space-between; margin-bottom:20px;">
-        <h2>📦 Mis Herramientas</h2>
-        <div style="display:flex; gap:10px;">
-            <button onclick="window.verEntregasPendientes()" class="btn-primary">Ver Alquileres</button>
-            <button onclick="window.abrirModalHerramienta()" class="btn-primary" style="background:var(--success);">+ Publicar</button>
-        </div>
-    </div>
-    <div id="data-display" class="tools-grid">Cargando...</div>
-</section>
-
-<div id="modal-herramienta-proveedor" class="modal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6);">
-    <div class="modal-content" style="background:#1e293b; color:white; margin:5% auto; padding:25px; width:450px; border-radius:12px; border:1px solid #334155;">
-        <h3 style="margin-top:0;">Publicar Nueva Herramienta</h3>
-        <form id="herramienta-form-proveedor">
-            <input type="text" id="hp-nombre" placeholder="Nombre" required class="form-control" style="margin-bottom:12px; width:100%;">
-            <textarea id="hp-desc" placeholder="Descripción" class="form-control" style="margin-bottom:12px; width:100%; min-height:80px;"></textarea>
-            <input type="number" id="hp-precio" placeholder="Precio por día ($)" required class="form-control" style="margin-bottom:12px; width:100%;">
-            <input type="number" id="hp-stock" placeholder="Stock" required class="form-control" style="margin-bottom:12px; width:100%;">
-            <input type="text" id="hp-imagen" placeholder="URL Imagen" class="form-control" style="margin-bottom:20px; width:100%;">
-            
-            <div style="display:flex; gap:10px;">
-                <button type="submit" class="btn-primary" style="background:#10b981; flex:1;">Publicar</button>
-                <button type="button" onclick="window.cerrarModalHerramienta()" class="btn-primary" style="background:#ef4444; flex:1;">Cancelar</button>
+        htmlContent = `
+        <section class="proveedor-panel fade-in">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2rem; border-bottom:2px solid var(--primary); padding-bottom:1rem;">
+                <h2 style="text-transform:uppercase; font-weight:900; letter-spacing:1px;">⚒️ Gestión de Inventario</h2>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="window.verEntregasPendientes()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem;">Ver Alquileres</button>
+                    <button onclick="window.abrirModalHerramienta()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem; background:var(--accent);">+ Publicar Herramienta</button>
+                </div>
             </div>
-        </form>
-    </div>
-</div>`;
+            <div id="data-display" class="tools-grid">Cargando herramientas...</div>
+        </section>
+        
+        <div id="modal-herramienta-proveedor" class="modal">
+            <div class="modal-content" style="border-top: 8px solid var(--primary); border-radius: 0; background: var(--bg-card);">
+                <span class="close-btn" onclick="window.cerrarModalHerramienta()">&times;</span>
+                <h3 style="text-transform:uppercase; font-weight:900; margin-bottom:1.5rem; color:var(--primary);">Nueva Entrada de Equipo</h3>
+                
+                <form id="herramienta-form-proveedor">
+                    <div class="input-group">
+                        <label>Nombre del Equipo</label>
+                        <input type="text" id="hp-nombre" placeholder="Ej. Mezcladora de Cemento" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Especificaciones Técnicas</label>
+                        <textarea id="hp-desc" placeholder="Detalles de potencia, capacidad, etc." style="min-height:80px;"></textarea>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <div class="input-group">
+                            <label>Tarifa Diaria ($)</label>
+                            <input type="number" id="hp-precio" placeholder="0.00" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Unidades Stock</label>
+                            <input type="number" id="hp-stock" placeholder="1" required>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Enlace de Imagen</label>
+                        <input type="text" id="hp-imagen" placeholder="URL de la fotografía">
+                    </div>
+                    
+                    <div style="display:flex; gap:10px; margin-top:1rem;">
+                        <button type="submit" class="btn-primary" style="flex:2;">Confirmar Publicación</button>
+                        <button type="button" onclick="window.cerrarModalHerramienta()" class="btn-primary" style="background:var(--danger); flex:1;">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>`;
             callback = () => window.cargarHerramientas();
             break;
 
         default: // VISTA CLIENTE
-            htmlContent = `
-                <section class="cliente-panel">
-                    <div class="header-flex" style="display:flex; justify-content:space-between; margin-bottom:20px;">
-                        <h2>🛠️ Catálogo de Herramientas</h2>
-                        <div style="display:flex; gap:10px;">
-                            <button onclick="window.cargarHerramientas()" class="btn-primary">Explorar</button>
-                            <button onclick="window.verMisReservas()" class="btn-primary">Mis Alquileres</button>
-                        </div>
-                    </div>
-                    <div id="herramientas-grid" class="tools-grid">Cargando...</div>
-                </section>`;
-            callback = () => window.cargarHerramientas();
-            break;
+        htmlContent = `
+        <section class="cliente-panel fade-in">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2rem; border-bottom:2px solid var(--primary); padding-bottom:1rem;">
+                <h2 style="text-transform:uppercase; font-weight:900; letter-spacing:1px;">⚒️ Catálogo de Equipos</h2>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="window.cargarHerramientas()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem;">Explorar Equipos</button>
+                    <button onclick="window.verMisReservas()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem; background:var(--accent);">Mis Alquileres</button>
+                </div>
+            </div>
+            
+            <div id="herramientas-grid" class="tools-grid">
+                <div class="loader" style="padding:20px; color:var(--primary); font-weight:bold;">Localizando herramientas disponibles...</div>
+            </div>
+        </section>`;
+    callback = () => window.cargarHerramientas();
+    break;
     }
     content.innerHTML = htmlContent;
     if (callback) setTimeout(callback, 50);
@@ -194,30 +221,40 @@ window.cargarHerramientas = async function () {
                 const tieneStock = h.stock > 0;
 
                 return `
-<div class="tool-card" style="background:#1e293b; border-radius:12px; overflow:hidden; border: 1px solid #334155;">
-    <div style="width:100%; height:160px; position:relative;">
-        <img src="${imgSource}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/300x160?text=Sin+Imagen'">
-        <div style="position:absolute; top:10px; right:10px;" class="tool-status ${tieneStock ? 'disponible' : 'alquilado'}">
-            ${tieneStock ? 'DISPONIBLE' : 'AGOTADO'}
-        </div>
-    </div>
-    <div style="padding:15px; color:white;">
-        <h3 style="margin:0; font-size:1.1rem;">${h.nombre}</h3>
-        <p style="font-size:0.85rem; color:#94a3b8; margin:8px 0; height:32px; overflow:hidden;">${h.descripcion || 'Sin descripción'}</p>
-        
-        <p style="font-size:0.9rem; color:#cbd5e1; margin-bottom: 5px;">
-            📦 Unidades: <span style="color:${tieneStock ? '#10b981' : '#ef4444'}">${h.stock} disponibles</span>
-        </p>
+                <div class="tool-card" style="display: flex; flex-direction: column; background: var(--bg-card);">
+                    <div style="width:100%; height:180px; position:relative; overflow:hidden;">
+                        <img src="${imgSource}" 
+                            style="width:100%; height:100%; object-fit:cover; border-bottom:1px solid var(--border);" 
+                            onerror="this.src='https://via.placeholder.com/300x180?text=Equipo+Sin+Imagen'">
+                        
+                        <div style="position:absolute; top:12px; right:12px; padding:4px 10px; font-size:0.65rem; font-weight:900; text-transform:uppercase; color:white; background:${tieneStock ? 'var(--primary)' : 'var(--danger)'};">
+                            ${tieneStock ? 'En Stock' : 'Sin Stock'}
+                        </div>
+                    </div>
+                    
+                    <div class="tool-info" style="padding:1.5rem; flex-grow:1; display:flex; flex-direction:column;">
+                        <h3 style="margin:0; font-size:1rem; text-transform:uppercase; font-weight:800; color:var(--text-dark);">${h.nombre}</h3>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin:10px 0; height:40px; overflow:hidden; line-height:1.4;">
+                            ${h.descripcion || 'Sin especificaciones técnicas proporcionadas.'}
+                        </p>
+                        
+                        <div style="background: #f0f0e0; padding: 12px; margin-bottom: 15px; border-left: 4px solid var(--primary);">
+                            <span style="display:block; font-size:0.65rem; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px;">Tarifa Diaria</span>
+                            <span style="font-size:1.4rem; font-weight:900; color:var(--text-dark);">$${h.precioDia}</span>
+                        </div>
 
-        <p style="color:#38bdf8; font-weight:bold; font-size:1.2rem; margin:10px 0;">$${h.precioDia} <span style="font-size:0.8rem; color:#64748b;">/ día</span></p>
-        
-        <button onclick="window.prepararReserva(${h.id}, '${h.nombre}')" 
-                class="btn-primary" 
-                ${!tieneStock ? 'disabled style="background:#475569; cursor:not-allowed;"' : 'style="background:#2563eb;"'}>
-            ${tieneStock ? 'Reservar Ahora' : 'No Disponible'}
-        </button>
-    </div>
-</div>`;
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:15px; text-transform:uppercase;">
+                            Cantidad: <span style="color:${tieneStock ? 'var(--primary)' : 'var(--danger)'};">${h.stock} Unidades</span>
+                        </div>
+                        
+                        <button onclick="window.prepararReserva(${h.id}, '${h.nombre}')" 
+                                class="btn-primary" 
+                                ${!tieneStock ? 'disabled' : ''}
+                                style="margin-top:auto; padding:0.8rem; font-size:0.75rem;">
+                            ${tieneStock ? 'SOLICITAR EQUIPO' : 'AGOTADO TEMPORALMENTE'}
+                        </button>
+                    </div>
+                </div>`;
             }).join('');
         }
     } catch (e) { console.error("Error cargando herramientas:", e); }
