@@ -1,241 +1,44 @@
-<<<<<<< HEAD
 const API_URL = "http://localhost:8081/api";
 
-// --- 1. GESTIÓN DE SESIÓN Y LOGIN ---
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const correo = document.getElementById('email').value;
-    const contrasena = document.getElementById('password').value;
+/**
+ * --- GESTIÓN DE INTERFAZ Y NAVEGACIÓN ---
+ */
 
-    try {
-        const response = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ correo, contrasena })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            localStorage.setItem('jwt', data.token);
-            
-            const base64Url = data.token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(window.atob(base64));
-            
-            localStorage.setItem('usuarioId', payload.id || payload.userId); 
-            localStorage.setItem('rol', payload.roles[0]);
-            localStorage.setItem('username', payload.sub);
-
-            mostrarDashboard();
-        } else {
-            alert("Acceso denegado: Credenciales incorrectas");
-        }
-    } catch (error) {
-        console.error("Error en login:", error);
-        alert("Error de conexión con el servidor.");
+// Alterna entre los formularios de Login y Registro
+window.toggleAuth = function(showRegister) {
+    const loginCont = document.getElementById('login-container');
+    const regCont = document.getElementById('register-container');
+    if (loginCont && regCont) {
+        loginCont.style.display = showRegister ? 'none' : 'block';
+        regCont.style.display = showRegister ? 'block' : 'none';
     }
-});
+};
 
+// Controla la visibilidad del dashboard y limpia residuos de modales
 function mostrarDashboard() {
-    document.getElementById('login-container').style.display = 'none';
+    document.getElementById('auth-wrapper').style.display = 'none';
     document.getElementById('dashboard-container').style.display = 'block';
     
     const rol = localStorage.getItem('rol');
     const user = localStorage.getItem('username');
     document.getElementById('user-info').innerText = `${user} (${rol})`;
     
+    // Asegura que los modales inicien cerrados al cargar la vista
+    if(document.getElementById('modal-reserva')) window.cerrarModal();
+    if(document.getElementById('modal-herramienta')) window.cerrarModalHerramienta();
+    
     cargarVistaPorRol(rol);
 }
 
-function logout() {
-    localStorage.clear();
-    location.reload();
-}
+window.logout = function() { 
+    localStorage.clear(); 
+    location.reload(); 
+};
 
-// --- 2. ENRUTADOR DE VISTAS ---
-function cargarVistaPorRol(rol) {
-    const content = document.getElementById('content');
-    
-    if (rol === 'ADMINISTRADOR') {
-        content.innerHTML = `
-            <section class="admin-panel">
-                <h2>Panel de Administración</h2>
-                <div class="stats-grid">
-                    <div class="card"><h3>Usuarios</h3><p id="count-usuarios">-</p></div>
-                    <div class="card" style="border-top-color: var(--success)"><h3>Ingresos Totales</h3><p id="total-ventas">$0</p></div>
-                    <div class="card" style="border-top-color: var(--warning)"><h3>Herramientas Disp.</h3><p id="count-disponibles">-</p></div>
-                </div>
-                <div class="actions" style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button onclick="listarUsuarios()" class="btn-primary" style="width: auto;">Usuarios</button>
-                    <button onclick="verReporteVentas()" class="btn-primary" style="width: auto; background: var(--success);">Ver Ingresos</button>
-                    <button onclick="cargarHerramientas()" class="btn-primary" style="width: auto; background: var(--dark);">Inventario</button>
-                </div>
-                <div id="data-display" class="data-table"><p>Seleccione una acción para ver los detalles...</p></div>
-            </section>
-        `;
-        actualizarEstadisticasAdmin();
-    } else {
-        content.innerHTML = `
-            <section class="cliente-panel">
-                <div class="header-flex">
-                    <h2>🛠️ Catálogo de Herramientas</h2>
-                    <div style="display:flex; gap:10px;">
-                        <button onclick="cargarHerramientas()" class="btn-primary" style="background:var(--dark); width:auto;">Ver Catálogo</button>
-                        <button onclick="verMisReservas()" class="btn-primary" style="width:auto;">Mis Alquileres</button>
-                    </div>
-                </div>
-                <div id="herramientas-grid" class="tools-grid">Cargando herramientas...</div>
-            </section>
-        `;
-        cargarHerramientas();
-    }
-}
+/**
+ * --- AUTENTICACIÓN Y REGISTRO ---
+ */
 
-// --- 3. FUNCIONES DE ADMINISTRADOR ---
-async function actualizarEstadisticasAdmin() {
-    const token = localStorage.getItem('jwt');
-    try {
-        const resH = await fetch(`${API_URL}/herramientas`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (resH.ok) {
-            const data = await resH.json();
-            const disp = data.filter(h => h.stock > 0).length;
-            document.getElementById('count-disponibles').innerText = `${disp} / ${data.length}`;
-        }
-        verReporteVentas(true); // Carga silenciosa para el card
-    } catch (e) { console.error(e); }
-}
-
-async function listarUsuarios() {
-    const token = localStorage.getItem('jwt');
-    const display = document.getElementById('data-display');
-    try {
-        const response = await fetch(`${API_URL}/usuarios`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (response.ok) {
-            const usuarios = await response.json();
-            document.getElementById('count-usuarios').innerText = usuarios.length;
-            let html = `<table class="styled-table"><thead><tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Rol</th></tr></thead><tbody>`;
-            usuarios.forEach(u => {
-                html += `<tr><td>${u.id}</td><td>${u.nombre}</td><td>${u.correo}</td><td><span class="badge ${u.rol.toLowerCase()}">${u.rol}</span></td></tr>`;
-            });
-            display.innerHTML = html + `</tbody></table>`;
-        }
-    } catch (e) { console.error(e); }
-}
-
-async function verReporteVentas(soloCard = false) {
-    const token = localStorage.getItem('jwt');
-    try {
-        const response = await fetch(`${API_URL}/admin/reportes/ingresos`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (response.ok) {
-            const data = await response.json();
-            const totalVal = data.totalIngresos || data;
-            const formatMoney = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalVal);
-            
-            document.getElementById('total-ventas').innerText = formatMoney;
-            
-            if (!soloCard) {
-                document.getElementById('data-display').innerHTML = `
-                    <div class="card" style="text-align:center; border-top-color: var(--success)">
-                        <h3>Ingresos Acumulados</h3>
-                        <p style="font-size: 3rem; color: var(--success);">${formatMoney}</p>
-                        <small>Basado en todas las reservas finalizadas y activas</small>
-                    </div>`;
-            }
-        }
-    } catch (e) { console.error(e); }
-}
-
-// --- 4. FUNCIONES DE CLIENTE ---
-async function cargarHerramientas() {
-    const token = localStorage.getItem('jwt');
-    const grid = document.getElementById('herramientas-grid') || document.getElementById('data-display');
-    try {
-        const response = await fetch(`${API_URL}/herramientas`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (response.ok) {
-            const herramientas = await response.json();
-            grid.innerHTML = herramientas.map(h => `
-                <div class="tool-card">
-                    <div class="tool-status ${h.stock > 0 ? 'disponible' : 'alquilado'}">${h.stock > 0 ? 'DISPONIBLE' : 'AGOTADO'}</div>
-                    <img src="https://via.placeholder.com/300x180?text=${encodeURIComponent(h.nombre)}" alt="${h.nombre}">
-                    <div class="tool-info">
-                        <h3>${h.nombre}</h3>
-                        <p>${h.descripcion}</p>
-                        <p style="margin-top:10px; font-size:0.9rem;">Stock: <strong>${h.stock}</strong> unidades</p>
-                        <p class="price"><span>$${h.precioDia}</span> / día</p>
-                        <button onclick="prepararReserva(${h.id}, '${h.nombre}')" class="btn-primary" ${h.stock <= 0 ? 'disabled' : ''}>
-                            ${h.stock > 0 ? 'Reservar Ahora' : 'Sin Stock'}
-                        </button>
-                    </div>
-                </div>`).join('');
-        }
-    } catch (e) { console.error(e); }
-}
-
-async function verMisReservas() {
-    const token = localStorage.getItem('jwt');
-    const grid = document.getElementById('herramientas-grid') || document.getElementById('data-display');
-    try {
-        const res = await fetch(`${API_URL}/reservas/mis-reservas`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) {
-            const reservas = await res.json();
-            let html = `<h3>Mis Alquileres Activos</h3><table class="styled-table"><thead><tr><th>Herramienta</th><th>Desde</th><th>Hasta</th><th>Estado</th></tr></thead><tbody>`;
-            reservas.forEach(r => {
-                html += `<tr><td>${r.nombreHerramienta}</td><td>${r.fechaInicio}</td><td>${r.fechaFin}</td><td><span class="badge activo">ACTIVO</span></td></tr>`;
-            });
-            grid.innerHTML = html + `</tbody></table>`;
-        }
-    } catch (e) { console.error(e); }
-}
-
-// --- 5. LÓGICA DE MODAL ---
-function prepararReserva(id, nombre) {
-    document.getElementById('reserva-tool-id').value = id;
-    document.getElementById('reserva-tool-name').innerText = nombre;
-    document.getElementById('modal-reserva').style.display = 'block';
-}
-
-function cerrarModal() {
-    document.getElementById('modal-reserva').style.display = 'none';
-}
-
-document.getElementById('reserva-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem('jwt');
-    const usuarioId = localStorage.getItem('usuarioId');
-
-    const data = {
-        clienteId: parseInt(usuarioId),
-        herramientaId: parseInt(document.getElementById('reserva-tool-id').value),
-        fechaInicio: document.getElementById('fecha-inicio').value,
-        fechaFin: document.getElementById('fecha-fin').value
-    };
-
-    const response = await fetch(`${API_URL}/reservas`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-
-    if (response.ok) {
-        alert("✅ Reserva exitosa.");
-        cerrarModal();
-        cargarHerramientas();
-    } else {
-        alert("❌ Error: " + await response.text());
-    }
-});
-
-window.onload = () => { if (localStorage.getItem('jwt')) mostrarDashboard(); };
-=======
-const API_URL = "http://localhost:8081/api";
-
-// --- 1. NAVEGACIÓN ENTRE LOGIN Y REGISTRO ---
-function toggleAuth(showRegister) {
-    document.getElementById('login-container').style.display = showRegister ? 'none' : 'block';
-    document.getElementById('register-container').style.display = showRegister ? 'block' : 'none';
-}
-
-// --- 2. GESTIÓN DE SESIÓN Y LOGIN ---
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const correo = document.getElementById('email').value;
@@ -252,26 +55,21 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             const data = await response.json();
             localStorage.setItem('jwt', data.token);
             
-            // Decodificación del Payload del JWT (Manejo robusto de Base64)
-            const base64Url = data.token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(window.atob(base64));
+            // Decodificación manual del Payload del JWT para extraer info del usuario
+            const payload = JSON.parse(window.atob(data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
             
-            localStorage.setItem('usuarioId', payload.id || payload.userId); 
-            localStorage.setItem('rol', payload.roles[0]);
-            localStorage.setItem('username', payload.sub);
+            localStorage.setItem('usuarioId', payload.id || payload.userId || payload.sub); 
+            localStorage.setItem('rol', (payload.roles ? payload.roles[0] : (payload.role || "")).replace("ROLE_", ""));
+            localStorage.setItem('username', payload.sub || correo);
 
+            alert("¡Bienvenido!");
             mostrarDashboard();
         } else {
-            alert("Acceso denegado: Credenciales incorrectas");
+            alert("Credenciales incorrectas.");
         }
-    } catch (error) {
-        console.error("Error en login:", error);
-        alert("Error de conexión con el servidor.");
-    }
+    } catch (error) { console.error("Error en login:", error); }
 });
 
-// --- 3. REGISTRO DE NUEVOS USUARIOS (Mantiene Apellido y Rol) ---
 document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = {
@@ -281,170 +79,107 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
         contrasena: document.getElementById('reg-pass').value,
         rol: document.getElementById('reg-rol').value
     };
-
     try {
         const res = await fetch(`${API_URL}/usuarios`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        if (res.ok) {
-            alert("✅ Registro exitoso. Ahora puedes iniciar sesión.");
-            toggleAuth(false);
-            document.getElementById('register-form').reset();
-        } else {
-            const errorMsg = await res.text();
-            alert("❌ Error al registrar: " + errorMsg);
+        if (res.ok) { 
+            alert("✅ Registro exitoso"); 
+            window.toggleAuth(false); 
         }
-    } catch (err) {
-        console.error(err);
-        alert("Error de conexión.");
-    }
+    } catch (err) { console.error("Error en registro:", err); }
 });
 
-function mostrarDashboard() {
-    document.getElementById('auth-wrapper').style.display = 'none';
-    document.getElementById('dashboard-container').style.display = 'block';
-    
-    const rol = localStorage.getItem('rol');
-    const user = localStorage.getItem('username');
-    document.getElementById('user-info').innerText = `${user} (${rol})`;
-    
-    cargarVistaPorRol(rol);
-}
+/**
+ * --- ENRUTADOR DINÁMICO POR ROL ---
+ */
 
-function logout() {
-    localStorage.clear();
-    location.reload();
-}
-
-// --- 4. ENRUTADOR DE VISTAS POR ROL (Lógica completa) ---
 function cargarVistaPorRol(rol) {
     const content = document.getElementById('content');
+    if (!content) return;
     
-    // Normalizamos el rol para comparaciones
     const userRol = rol.startsWith('ROLE_') ? rol : `ROLE_${rol}`;
+    let htmlContent = '';
+    let callback = null;
 
-    if (userRol === 'ROLE_ADMINISTRADOR') {
-        content.innerHTML = `
-            <section class="admin-panel">
-                <h2>Panel de Administración</h2>
-                <div class="stats-grid">
-                    <div class="card"><h3>Usuarios</h3><p id="count-usuarios">-</p></div>
-                    <div class="card" style="border-top-color: var(--success)"><h3>Ingresos Totales</h3><p id="total-ventas">$0</p></div>
-                    <div class="card" style="border-top-color: var(--warning)"><h3>Herramientas Disp.</h3><p id="count-disponibles">-</p></div>
-                </div>
-                <div class="actions" style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button onclick="listarUsuarios()" class="btn-primary" style="width: auto;">Usuarios</button>
-                    <button onclick="verReporteVentas()" class="btn-primary" style="width: auto; background: var(--success);">Ver Ingresos</button>
-                    <button onclick="cargarHerramientas()" class="btn-primary" style="width: auto; background: var(--dark);">Inventario</button>
-                </div>
-                <div id="data-display" class="data-table"><p>Seleccione una acción para ver los detalles...</p></div>
-            </section>
-        `;
-        // Pequeño delay para asegurar que el DOM registró los IDs
-        setTimeout(() => actualizarEstadisticasAdmin(), 50);
-
-    } else if (userRol === 'ROLE_PROVEEDOR') {
-        content.innerHTML = `
-            <section class="proveedor-panel">
-                <div class="header-flex" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h2>📦 Gestión de Mis Herramientas</h2>
-                    <button onclick="abrirModalHerramienta()" class="btn-primary" style="width:auto; background:var(--success);">+ Publicar Herramienta</button>
-                </div>
-                <div id="data-display" class="tools-grid">Cargando tus publicaciones...</div>
-            </section>
-        `;
-        setTimeout(() => cargarHerramientas(), 50);
-
-    } else {
-        content.innerHTML = `
-            <section class="cliente-panel">
-                <div class="header-flex" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h2>🛠️ Catálogo de Herramientas</h2>
-                    <div style="display:flex; gap:10px;">
-                        <button onclick="cargarHerramientas()" class="btn-primary" style="background:var(--dark); width:auto;">Ver Catálogo</button>
-                        <button onclick="verMisReservas()" class="btn-primary" style="width:auto;">Mis Alquileres</button>
+    switch (userRol) {
+        case 'ROLE_ADMINISTRADOR':
+            htmlContent = `
+                <section class="admin-panel">
+                    <div class="header-flex" style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                        <h2>🛡️ Panel de Administración</h2>
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="window.verDashboardAdmin()" class="btn-primary">📈 Reportes</button>
+                            <button onclick="window.listarUsuarios()" class="btn-primary">👥 Usuarios</button>
+                        </div>
                     </div>
-                </div>
-                <div id="herramientas-grid" class="tools-grid">Cargando herramientas...</div>
-            </section>
-        `;
-        setTimeout(() => cargarHerramientas(), 50);
+                    <div id="data-display" class="tools-grid">Cargando...</div>
+                </section>`;
+            callback = () => window.verDashboardAdmin();
+            break;
+
+        case 'ROLE_PROVEEDOR':
+            htmlContent = `
+                <section class="proveedor-panel">
+                    <div class="header-flex" style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                        <h2>📦 Mis Herramientas</h2>
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="window.verEntregasPendientes()" class="btn-primary">Ver Alquileres</button>
+                            <button onclick="window.abrirModalHerramienta()" class="btn-primary" style="background:var(--success);">+ Publicar</button>
+                        </div>
+                    </div>
+                    <div id="data-display" class="tools-grid">Cargando...</div>
+                </section>
+                
+                <div id="modal-herramienta" class="modal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6);">
+                    <div class="modal-content" style="background:#1e293b; color:white; margin:5% auto; padding:25px; width:450px; border-radius:12px; border:1px solid #334155;">
+                        <h3 style="margin-top:0;">Publicar Nueva Herramienta</h3>
+                        <form id="herramienta-form">
+                            <input type="text" id="h-nombre" placeholder="Nombre de la herramienta" required class="form-control" style="margin-bottom:12px; width:100%;">
+                            <textarea id="h-desc" placeholder="Descripción breve" class="form-control" style="margin-bottom:12px; width:100%; min-height:80px;"></textarea>
+                            <input type="number" id="h-precio" placeholder="Precio por día ($)" required class="form-control" style="margin-bottom:12px; width:100%;">
+                            <input type="number" id="h-stock" placeholder="Cantidad disponible (Stock)" required class="form-control" style="margin-bottom:12px; width:100%;">
+                            <input type="text" id="h-imagen" placeholder="URL de la imagen (JPG, PNG)" class="form-control" style="margin-bottom:20px; width:100%;">
+                            
+                            <div style="display:flex; gap:10px;">
+                                <button type="submit" class="btn-primary" style="background:#10b981; flex:1;">Publicar</button>
+                                <button type="button" onclick="window.cerrarModalHerramienta()" class="btn-primary" style="background:#ef4444; flex:1;">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>`;
+            callback = () => window.cargarHerramientas();
+            break;
+
+        default: // VISTA CLIENTE
+            htmlContent = `
+                <section class="cliente-panel">
+                    <div class="header-flex" style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                        <h2>🛠️ Catálogo de Herramientas</h2>
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="window.cargarHerramientas()" class="btn-primary">Explorar</button>
+                            <button onclick="window.verMisReservas()" class="btn-primary">Mis Alquileres</button>
+                        </div>
+                    </div>
+                    <div id="herramientas-grid" class="tools-grid">Cargando...</div>
+                </section>`;
+            callback = () => window.cargarHerramientas();
+            break;
     }
+    content.innerHTML = htmlContent;
+    if (callback) setTimeout(callback, 50);
 }
 
-// --- 5. FUNCIONES DE ADMINISTRADOR (Mantiene toda la lógica de reportes) ---
-async function actualizarEstadisticasAdmin() {
-    const token = localStorage.getItem('jwt');
-    try {
-        const resH = await fetch(`${API_URL}/herramientas`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (resH.ok) {
-            const data = await resH.json();
-            const disp = data.filter(h => h.stock > 0).length;
-            const dispElem = document.getElementById('count-disponibles');
-            if(dispElem) dispElem.innerText = `${disp} / ${data.length}`;
-        }
-        verReporteVentas(true); 
-    } catch (e) { console.error(e); }
-}
+/**
+ * --- GESTIÓN DE HERRAMIENTAS ---
+ */
 
-async function listarUsuarios() {
-    const token = localStorage.getItem('jwt');
-    const display = document.getElementById('data-display');
-    try {
-        const response = await fetch(`${API_URL}/usuarios`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (response.ok) {
-            const usuarios = await response.json();
-            const countElem = document.getElementById('count-usuarios');
-            if(countElem) countElem.innerText = usuarios.length;
-            
-            let html = `<table class="styled-table"><thead><tr><th>ID</th><th>Nombre Completo</th><th>Correo</th><th>Rol</th></tr></thead><tbody>`;
-            usuarios.forEach(u => {
-                const nombreCompleto = u.apellido ? `${u.nombre} ${u.apellido}` : u.nombre;
-                html += `<tr><td>${u.id}</td><td>${nombreCompleto}</td><td>${u.correo}</td><td><span class="badge ${u.rol.toLowerCase()}">${u.rol}</span></td></tr>`;
-            });
-            display.innerHTML = html + `</tbody></table>`;
-        }
-    } catch (e) { console.error(e); }
-}
-
-async function verReporteVentas(soloCard = false) {
-    const token = localStorage.getItem('jwt');
-    try {
-        const response = await fetch(`${API_URL}/admin/reportes/ingresos`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (response.ok) {
-            const data = await response.json();
-            const totalVal = data.totalIngresos || data;
-            const formatMoney = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalVal);
-            
-            const ventasElem = document.getElementById('total-ventas');
-            if (ventasElem) ventasElem.innerText = formatMoney;
-            
-            if (!soloCard) {
-                const display = document.getElementById('data-display');
-                if(display) {
-                    display.innerHTML = `
-                        <div class="card" style="text-align:center; border-top-color: var(--success)">
-                            <h3>Ingresos Acumulados</h3>
-                            <p style="font-size: 3rem; color: var(--success);">${formatMoney}</p>
-                            <small>Basado en todas las reservas finalizadas y activas</small>
-                        </div>`;
-                }
-            }
-        }
-    } catch (e) { console.error(e); }
-}
-
-// --- 6. FUNCIONES DE CARGA DE HERRAMIENTAS ---
-async function cargarHerramientas() {
+window.cargarHerramientas = async function() {
     const token = localStorage.getItem('jwt');
     const grid = document.getElementById('herramientas-grid') || document.getElementById('data-display');
-
-    if (!grid) {
-        console.warn("Contenedor no listo, reintentando...");
-        return; 
-    }
+    if (!grid) return; 
 
     try {
         const response = await fetch(`${API_URL}/herramientas`, { 
@@ -453,155 +188,134 @@ async function cargarHerramientas() {
         
         if (response.ok) {
             const herramientas = await response.json();
-            if (herramientas.length === 0) {
-                grid.innerHTML = "<p>No hay herramientas publicadas todavía.</p>";
-                return;
-            }
-            grid.innerHTML = herramientas.map(h => `
-                <div class="tool-card">
-                    <div class="tool-status ${h.stock > 0 ? 'disponible' : 'alquilado'}">
-                        ${h.stock > 0 ? 'DISPONIBLE' : 'AGOTADO'}
+            grid.innerHTML = herramientas.map(h => {
+                const imgSource = h.imagenUrl || 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?q=80&w=500';
+                const tieneStock = h.stock > 0;
+
+                return `
+                <div class="tool-card" style="background:#1e293b; border-radius:12px; overflow:hidden; border: 1px solid #334155;">
+                    <div style="width:100%; height:160px; position:relative;">
+                        <img src="${imgSource}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/300x160?text=Sin+Imagen'">
+                        <div style="position:absolute; top:10px; right:10px;" class="tool-status ${tieneStock ? 'disponible' : 'alquilado'}">
+                            ${tieneStock ? 'DISPONIBLE' : 'AGOTADO'}
+                        </div>
                     </div>
-                    <div class="tool-info">
-                        <h3>${h.nombre}</h3>
-                        <p>${h.descripcion}</p>
-                        <p style="margin-top:10px; font-size:0.9rem;">Stock: <strong>${h.stock}</strong></p>
-                        <p class="price"><span>$${h.precioDia}</span> / día</p>
-                        <p style="font-size:0.8rem; color:#666;">Proveedor: ${h.nombreProveedor || 'Sistema'}</p>
-                        <button onclick="prepararReserva(${h.id}, '${h.nombre}')" 
-                                class="btn-primary" ${h.stock <= 0 ? 'disabled' : ''} style="margin-top:10px;">
-                            ${h.stock > 0 ? 'Reservar Ahora' : 'Sin Stock'}
+                    <div style="padding:15px; color:white;">
+                        <h3 style="margin:0; font-size:1.1rem;">${h.nombre}</h3>
+                        <p style="font-size:0.85rem; color:#94a3b8; margin:8px 0; height:32px; overflow:hidden;">${h.descripcion || 'Sin descripción'}</p>
+                        <p style="color:#38bdf8; font-weight:bold; font-size:1.2rem; margin:10px 0;">$${h.precioDia} <span style="font-size:0.8rem; color:#64748b;">/ día</span></p>
+                        
+                        <button onclick="window.prepararReserva(${h.id}, '${h.nombre}')" 
+                                class="btn-primary" 
+                                ${!tieneStock ? 'disabled style="background:#475569; cursor:not-allowed;"' : 'style="background:#2563eb;"'}>
+                            ${tieneStock ? 'Reservar Ahora' : 'No Disponible'}
                         </button>
                     </div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
         }
-    } catch (e) { 
-        console.error("Error cargando herramientas:", e); 
-    }
-}
+    } catch (e) { console.error("Error cargando herramientas:", e); }
+};
 
-async function verMisReservas() {
-    const token = localStorage.getItem('jwt');
-    const grid = document.getElementById('herramientas-grid') || document.getElementById('data-display');
-    try {
-        const res = await fetch(`${API_URL}/reservas/mis-reservas`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) {
-            const reservas = await res.json();
-            let html = `<h3>Mis Alquileres Activos</h3><table class="styled-table"><thead><tr><th>Herramienta</th><th>Desde</th><th>Hasta</th><th>Estado</th></tr></thead><tbody>`;
-            reservas.forEach(r => {
-                html += `<tr><td>${r.nombreHerramienta}</td><td>${r.fechaInicio}</td><td>${r.fechaFin}</td><td><span class="badge activo">ACTIVO</span></td></tr>`;
+// Captura global para el formulario dinámico de herramientas
+document.addEventListener('submit', async (e) => {
+    if (e.target && e.target.id === 'herramienta-form') {
+        e.preventDefault();
+        const token = localStorage.getItem('jwt');
+        const usuarioId = localStorage.getItem('usuarioId');
+        const stockVal = parseInt(document.getElementById('h-stock').value);
+
+        const nuevaHerramienta = {
+            nombre: document.getElementById('h-nombre').value,
+            descripcion: document.getElementById('h-desc').value,
+            precioDia: parseFloat(document.getElementById('h-precio').value),
+            stock: stockVal,
+            disponible: stockVal > 0,
+            imagenUrl: document.getElementById('h-imagen').value,
+            proveedor: { id: parseInt(usuarioId) } 
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/herramientas`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`, 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify(nuevaHerramienta)
             });
-            grid.innerHTML = html + `</tbody></table>`;
-        }
-    } catch (e) { console.error(e); }
-}
 
-// --- 7. LÓGICA DE MODAL Y RESERVAS ---
-function prepararReserva(id, nombre) {
+            if (response.ok) {
+                alert("✅ ¡Herramienta publicada!");
+                window.cerrarModalHerramienta();
+                window.cargarHerramientas();
+            }
+        } catch (error) { console.error("Error al publicar:", error); }
+    }
+});
+
+/**
+ * --- GESTIÓN DE RESERVAS Y PAGOS ---
+ */
+
+window.prepararReserva = function(id, nombre) {
     const modal = document.getElementById('modal-reserva');
     if(modal) {
         document.getElementById('reserva-tool-id').value = id;
         document.getElementById('reserva-tool-name').innerText = nombre;
         modal.style.display = 'block';
     }
-}
-
-function cerrarModal() {
-    document.getElementById('modal-reserva').style.display = 'none';
-    document.getElementById('reserva-form').reset();
-}
+};
 
 document.getElementById('reserva-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const token = localStorage.getItem('jwt');
     const usuarioId = localStorage.getItem('usuarioId');
-
     const data = {
         clienteId: parseInt(usuarioId),
         herramientaId: parseInt(document.getElementById('reserva-tool-id').value),
         fechaInicio: document.getElementById('fecha-inicio').value,
         fechaFin: document.getElementById('fecha-fin').value
     };
-
     try {
         const response = await fetch(`${API_URL}/reservas`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-
-        if (response.ok) {
-            alert("✅ Reserva exitosa.");
-            cerrarModal();
-            cargarHerramientas();
-        } else {
-            alert("❌ Error: " + await response.text());
+        if (response.ok) { 
+            alert("✅ Reserva exitosa."); 
+            window.cerrarModal(); 
+            window.cargarHerramientas(); 
         }
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error("Error en reserva:", err); }
 });
 
-// --- 8. FUNCIONES DEL PROVEEDOR ---
-
-// Exportamos estas funciones al objeto global para evitar el Uncaught ReferenceError en el HTML
-window.abrirModalHerramienta = function() {
-    const modal = document.getElementById('modal-herramienta');
-    if(modal) modal.style.display = 'block';
-}
-
-window.cerrarModalHerramienta = function() {
-    const modal = document.getElementById('modal-herramienta');
-    if(modal) {
-        modal.style.display = 'none';
-        document.getElementById('herramienta-form').reset();
-    }
-}
-
-document.getElementById('herramienta-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+window.procesarPagoYDescargarFactura = async function(reservaId, monto) {
     const token = localStorage.getItem('jwt');
-    
-    // Capturamos y validamos los valores numéricos
-    const precio = parseFloat(document.getElementById('h-precio').value);
-    const stock = parseInt(document.getElementById('h-stock').value);
-
-    // Creamos el objeto incluyendo el campo 'disponible' que exige tu DB
-    const nuevaHerramienta = {
-        nombre: document.getElementById('h-nombre').value,
-        descripcion: document.getElementById('h-desc').value,
-        precioDia: parseFloat(document.getElementById('h-precio').value),
-        stock: parseInt(document.getElementById('h-stock').value),
-        disponible: parseInt(document.getElementById('h-stock').value) > 0 // Coincide con el nuevo campo en Java
-    };
-    console.log("Enviando herramienta a la DB:", nuevaHerramienta);
-
     try {
-        const response = await fetch(`${API_URL}/herramientas`, {
+        const response = await fetch(`${API_URL}/reservas/pagar/descargar`, {
             method: 'POST',
-            headers: { 
-                'Authorization': `Bearer ${token}`, 
-                'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify(nuevaHerramienta)
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservaId, monto })
         });
-
-        if (response.ok) {
-            alert("✅ ¡Herramienta publicada con éxito!");
-            window.cerrarModalHerramienta();
-            cargarHerramientas(); // Refresca la lista automáticamente
-        } else {
-            const errDetail = await response.text();
-            alert("❌ Error del servidor: " + errDetail);
-        }
-    } catch (error) {
-        console.error("Error de red:", error);
-        alert("Error de conexión al intentar publicar.");
-    }
-});
-
-// --- 9. INICIALIZACIÓN ---
-window.onload = () => { 
-    if (localStorage.getItem('jwt')) {
-        mostrarDashboard(); 
-    }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Factura_${reservaId}.pdf`;
+        a.click();
+    } catch (error) { console.error("Error al descargar PDF:", error); }
 };
->>>>>>> 175d1eddb8631af7b8813a590e1f916428e23bfd
+
+/**
+ * --- UTILIDADES DE MODALES Y CARGA INICIAL ---
+ */
+
+window.abrirModalHerramienta = () => document.getElementById('modal-herramienta').style.display = 'block';
+window.cerrarModalHerramienta = () => document.getElementById('modal-herramienta').style.display = 'none';
+window.cerrarModal = () => document.getElementById('modal-reserva').style.display = 'none';
+
+window.onload = () => { 
+    if (localStorage.getItem('jwt')) mostrarDashboard(); 
+};
