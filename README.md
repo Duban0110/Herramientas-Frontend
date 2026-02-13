@@ -2,7 +2,6 @@
 
 Interfaz de usuario moderna y responsiva para la plataforma de renta de herramientas. Desarrollada con **JavaScript Vanilla**, **CSS3** y **HTML5**, enfocada en la velocidad y una experiencia de usuario fluida.
 
-🔗 **Repositorio del Backend:** [Herramientas-Backend](https://github.com/Duban0110/Herramientas-Backend.git)
 
 ---
 
@@ -58,6 +57,12 @@ const API_URL = "http://localhost:8081/api";
 
 3. ***Ejecución:***
 Simplemente abre el archivo index.html en tu navegador o utiliza una extensión como Live Server en VS Code para una mejor experiencia
+
+
+## Wireframe del Sistema
+
+![Wireframe RentaTools](img/wireframe.png)
+
 
 👨‍💻 Autor
 Desarrollado por Duban.
