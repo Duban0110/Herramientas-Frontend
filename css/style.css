@@ -1,214 +1,972 @@
+/* ============================================================
+RENTATOOLS — INDUSTRIAL FORGE DESIGN SYSTEM
+style.css
+============================================================ */
+
+/* ============================================================
+1. VARIABLES — DESIGN TOKENS
+============================================================ */
 :root {
-    /* Paleta Craftsman */
-    --primary: #556b2f;       /* Verde Oliva Oscuro */
-    --primary-hover: #455a1f;
-    --accent: #808b96;        /* Gris Metal */
-    --bg-main: #f5f5dc;       /* Beige (Beige) */
-    --bg-card: #ffffff;
-    --text-dark: #2c3e50;
-    --text-muted: #7f8c8d;
-    --border: #d4d4aa;        /* Beige oscuro para bordes */
-    --white: #ffffff;
-    --danger: #922b21;
+    --forge-black:   #0d0d0d;
+    --forge-dark:    #141414;
+    --forge-panel:   #1a1a1a;
+    --forge-card:    #222222;
+    --forge-border:  #2e2e2e;
+    --forge-amber:   #f5a623;
+    --forge-amber-d: #c27f0e;
+    --forge-amber-g: #ffce68;
+    --forge-steel:   #8a9ba8;
+    --forge-red:     #c0392b;
+    --forge-green:   #27ae60;
+    --forge-text:    #e8e0d4;
+    --forge-muted:   #7a7065;
+    --forge-line:    #2e2e2e;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body { 
-    font-family: 'Inter', sans-serif; 
-    background-color: var(--bg-main); 
-    color: var(--text-dark); 
-    line-height: 1.6;
+/* ============================================================
+2. RESET & BASE
+============================================================ */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-/* --- NAVBAR MINIMALISTA --- */
-.navbar { 
-    background: var(--primary); 
-    color: var(--white); 
-    padding: 1.2rem 5%; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-    border-bottom: 1px solid var(--primary-hover);
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: 'DM Sans', sans-serif;
+    background-color: var(--forge-black);
+    color: var(--forge-text);
+    min-height: 100vh;
+    overflow-x: hidden;
 }
 
-.nav-brand { 
-    font-size: 1.1rem; 
-    font-weight: 800; 
-    letter-spacing: 2px; 
-    text-transform: uppercase;
+/* Grain texture overlay */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.6;
 }
 
-/* --- AUTH CARD (LOGIN) --- */
-#auth-wrapper {
-    height: 100vh;
+a { color: var(--forge-amber); }
+a:hover { text-decoration: underline; }
+
+/* ============================================================
+3. TYPOGRAPHY UTILITIES
+============================================================ */
+.font-display { font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; }
+.font-mono    { font-family: 'JetBrains Mono', monospace; }
+
+/* ============================================================
+4. ANIMATIONS
+============================================================ */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeModal {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50%       { opacity: 1; }
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ============================================================
+5. NAVBAR
+============================================================ */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--forge-dark);
+    border-bottom: 1px solid var(--forge-border);
+    padding: 0 5%;
+    height: 64px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
 }
 
-.auth-card {
-    background: var(--bg-card);
-    padding: 3rem;
-    width: 100%;
-    max-width: 380px;
-    border: 1px solid var(--border);
-    /* El detalle de diseño: un borde superior grueso oliva */
-    border-top: 6px solid var(--primary);
+.nav-brand {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 4px;
+    color: var(--forge-text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.auth-card h1 { 
-    font-size: 1.5rem; 
-    font-weight: 900; 
-    margin-bottom: 1rem; 
-    text-transform: uppercase;
-}
-
-/* --- FORMULARIOS --- */
-.input-group { margin-bottom: 1.5rem; }
-
-.input-group label {
-    display: block;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--primary);
-    margin-bottom: 0.5rem;
-}
-
-input, select, textarea {
-    width: 100%;
-    padding: 0.8rem;
-    border: 1px solid var(--border);
-    background: #fafafa;
-    font-size: 0.9rem;
-    border-radius: 0; /* Totalmente minimalista */
-}
-
-input:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
-/* --- BOTONES --- */
-.btn-primary {
-    background: var(--primary);
-    color: white;
-    border: none;
-    padding: 1rem;
-    text-transform: uppercase;
-    font-weight: 700;
-    font-size: 0.8rem;
-    letter-spacing: 1px;
-    cursor: pointer;
-    width: 100%;
-    transition: background 0.2s;
-}
-
-.btn-primary:hover { background: var(--primary-hover); }
-
-/* --- GRILLA DE HERRAMIENTAS INYECTADA --- */
-.tools-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 25px;
-}
-
-.tool-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    transition: all 0.2s;
-}
-
-.tool-card:hover {
-    border-color: var(--primary);
-}
-
-.tool-info { padding: 1.5rem; }
-
-.tool-info h3 {
-    text-transform: uppercase;
+.nav-brand::before {
+    content: '⬡';
     font-size: 1rem;
-    margin-bottom: 0.5rem;
+    color: var(--forge-amber);
+    opacity: 0.6;
 }
 
-.tool-price {
-    font-weight: 800;
-    color: var(--primary);
-    font-size: 1.2rem;
-    margin: 1rem 0;
-}
+.nav-brand .brand-accent { color: var(--forge-amber); }
 
-/* --- TABLAS Y ESTADOS --- */
-.styled-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    border: 1px solid var(--border);
-}
-
-.styled-table th {
-    background: #ecece0; /* Beige oscuro */
-    padding: 1rem;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    color: var(--primary);
-}
-
-.styled-table td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--border);
-}
-
-.status-badge {
-    padding: 3px 8px;
-    font-size: 0.65rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    background: var(--primary);
-    color: white;
-}
-
-.btn-logout {
-    background: transparent;
-    color: var(--white);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 0.5rem 1rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-radius: 0; /* Mantenemos el minimalismo recto */
-}
-
-.btn-logout:hover {
-    background: var(--danger);
-    border-color: var(--danger);
-    color: var(--white);
-}
-
-/* Ajuste para el contenedor de usuario en la Navbar */
 .nav-user {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
 }
 
 #user-info {
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--forge-muted);
     letter-spacing: 0.5px;
-    color: rgba(255, 255, 255, 0.9);
 }
 
 .badge-rol {
-    background: var(--bg-main);
-    color: var(--primary);
+    background: rgba(245, 166, 35, 0.15);
+    color: var(--forge-amber);
+    border: 1px solid rgba(245, 166, 35, 0.3);
     padding: 2px 8px;
-    margin-left: 10px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-left: 8px;
+}
+
+.btn-logout {
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.65rem;
-    font-weight: 900;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    background: transparent;
+    color: var(--forge-muted);
+    border: 1px solid var(--forge-border);
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-logout:hover {
+    background: var(--forge-red);
+    border-color: var(--forge-red);
+    color: white;
+}
+
+/* ============================================================
+6. AUTH SCREEN
+============================================================ */
+#auth-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+#auth-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(var(--forge-border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--forge-border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.3;
+}
+
+#auth-wrapper::after {
+    content: 'RENTATOOLS';
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22vw;
+    letter-spacing: 0.1em;
+    position: absolute;
+    bottom: -4vw;
+    left: 50%;
+    transform: translateX(-50%);
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(245, 166, 35, 0.05);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 0;
+}
+
+.auth-card {
+    position: relative;
+    z-index: 1;
+    background: var(--forge-panel);
+    border: 1px solid var(--forge-border);
+    width: 100%;
+    max-width: 420px;
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-header {
+    background: var(--forge-card);
+    padding: 2rem 2.5rem 1.5rem;
+    border-bottom: 1px solid var(--forge-border);
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--forge-amber), var(--forge-amber-g), var(--forge-amber));
+}
+
+.auth-header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 3px;
+    color: var(--forge-text);
+    line-height: 1;
+}
+
+.auth-header p {
+    font-size: 0.8rem;
+    color: var(--forge-muted);
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.auth-body { padding: 2rem 2.5rem 2.5rem; }
+
+.auth-toggle {
+    text-align: center;
+    margin-top: 1.2rem;
+    font-size: 0.8rem;
+    color: var(--forge-muted);
+}
+
+.auth-toggle a {
+    color: var(--forge-amber);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-toggle a:hover { text-decoration: underline; }
+
+/* ============================================================
+7. FORM ELEMENTS
+============================================================ */
+.input-group { margin-bottom: 1.3rem; }
+
+.input-group label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.63rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--forge-amber);
+    margin-bottom: 8px;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    background: var(--forge-black);
+    border: 1px solid var(--forge-border);
+    color: var(--forge-text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    padding: 0.8rem 1rem;
+    border-radius: 0;
+    transition: border-color 0.2s;
+    outline: none;
+    appearance: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--forge-amber);
+    background: #111;
+}
+
+input::placeholder { color: var(--forge-muted); font-size: 0.85rem; }
+
+select option { background: var(--forge-dark); }
+
+.input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* ============================================================
+8. BUTTONS
+============================================================ */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    background: var(--forge-amber);
+    color: var(--forge-black);
+    border: none;
+    padding: 1rem;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.btn-primary:hover::after { opacity: 1; }
+.btn-primary:hover        { background: var(--forge-amber-g); }
+.btn-primary:disabled     { background: var(--forge-border); color: var(--forge-muted); cursor: not-allowed; }
+
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: transparent;
+    color: var(--forge-text);
+    border: 1px solid var(--forge-border);
+    padding: 0.7rem 1.2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-secondary:hover,
+.btn-secondary.active {
+    border-color: var(--forge-amber);
+    color: var(--forge-amber);
+    background: rgba(245, 166, 35, 0.08);
+}
+
+.btn-danger {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: transparent;
+    color: var(--forge-red);
+    border: 1px solid var(--forge-red);
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover { background: var(--forge-red); color: white; }
+
+.btn-confirm {
+    width: 100%;
+    margin-top: 14px;
+    background: transparent;
+    color: var(--forge-amber);
+    border: 1px solid var(--forge-amber);
+    padding: 0.7rem;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-confirm:hover { background: var(--forge-amber); color: var(--forge-black); }
+
+.btn-download {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    background: transparent;
+    color: var(--forge-text);
+    border: 1px solid var(--forge-border);
+    padding: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-download:hover { border-color: var(--forge-amber); color: var(--forge-amber); }
+
+.btn-cancel {
+    flex: 1;
+    background: transparent;
+    color: var(--forge-red);
+    border: 1px solid var(--forge-red);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 1rem;
+}
+
+.btn-cancel:hover { background: var(--forge-red); color: white; }
+
+/* ============================================================
+9. DASHBOARD LAYOUT
+============================================================ */
+#dashboard-container {
+    display: none;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+main#content {
+    flex: 1;
+    padding: 2.5rem 5%;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* ============================================================
+   10. PANEL HEADERS
+============================================================ */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.2rem;
+    border-bottom: 1px solid var(--forge-border);
+    position: relative;
+}
+
+.panel-header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: var(--forge-amber);
+}
+
+.panel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 3px;
+    line-height: 1;
+    color: var(--forge-text);
+}
+
+.panel-title span { color: var(--forge-amber); }
+
+.panel-subtitle {
+    font-size: 0.75rem;
+    color: var(--forge-muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 4px;
+}
+
+.panel-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* ============================================================
+   11. TOOL CARDS
+============================================================ */
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.tool-card {
+    background: var(--forge-panel);
+    border: 1px solid var(--forge-border);
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.2s, transform 0.2s;
+    animation: fadeIn 0.4s ease both;
+}
+
+.tool-card:hover {
+    border-color: rgba(245, 166, 35, 0.4);
+    transform: translateY(-2px);
+}
+
+.tool-card-img-wrapper { position: relative; }
+
+.tool-card-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+    border-bottom: 1px solid var(--forge-border);
+    filter: grayscale(20%);
+    transition: filter 0.3s;
+}
+
+.tool-card:hover .tool-card-img { filter: grayscale(0%); }
+
+.stock-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    background: var(--forge-black);
+    border: 1px solid;
+}
+
+.stock-badge.in-stock  { color: var(--forge-green); border-color: var(--forge-green); }
+.stock-badge.out-stock { color: var(--forge-red);   border-color: var(--forge-red); }
+
+.tool-info {
+    padding: 1.4rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.tool-info h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.25rem;
+    letter-spacing: 2px;
+    color: var(--forge-text);
+    margin-bottom: 6px;
+}
+
+.tool-desc {
+    font-size: 0.78rem;
+    color: var(--forge-muted);
+    line-height: 1.5;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.tool-price-block {
+    margin: 1rem 0;
+    padding: 10px 12px;
+    background: var(--forge-card);
+    border-left: 3px solid var(--forge-amber);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.tool-price-block .price {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 1px;
+    color: var(--forge-amber);
+}
+
+.tool-price-block .price-label {
+    font-size: 0.7rem;
+    color: var(--forge-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.tool-stock-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--forge-muted);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ============================================================
+   12. STAT CARDS (ADMIN)
+============================================================ */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 2.5rem;
+}
+
+.stat-card {
+    background: var(--forge-panel);
+    border: 1px solid var(--forge-border);
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 0.4s ease both;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+}
+
+.stat-card.amber::before { background: var(--forge-amber); }
+.stat-card.green::before { background: var(--forge-green); }
+.stat-card.steel::before { background: var(--forge-steel); }
+.stat-card.red::before   { background: var(--forge-red); }
+
+.stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--forge-muted);
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: var(--forge-text);
+}
+
+.stat-value.green { color: var(--forge-green); }
+.stat-value.amber { color: var(--forge-amber); }
+
+.stat-icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 3rem;
+    opacity: 0.05;
+}
+
+/* ============================================================
+   13. TABLE
+============================================================ */
+.table-wrapper { overflow-x: auto; }
+
+.styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--forge-panel);
+    border: 1px solid var(--forge-border);
+    font-size: 0.85rem;
+}
+
+.styled-table thead tr {
+    background: var(--forge-card);
+    border-bottom: 1px solid var(--forge-border);
+}
+
+.styled-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--forge-amber);
+    padding: 1rem 1.2rem;
+    text-align: left;
+    font-weight: 700;
+}
+
+.styled-table td {
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--forge-border);
+    color: var(--forge-text);
+}
+
+.styled-table tr:hover td       { background: rgba(255, 255, 255, 0.02); }
+.styled-table tr:last-child td  { border-bottom: none; }
+
+.user-id   { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--forge-muted); }
+.user-name { font-weight: 600; }
+.user-mail { color: var(--forge-muted); font-size: 0.82rem; }
+
+/* ============================================================
+   14. STATUS BADGES
+============================================================ */
+.status-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 3px 10px;
+    border: 1px solid;
+}
+
+.status-badge.active  { color: var(--forge-green); border-color: var(--forge-green); background: rgba(39, 174, 96, 0.1); }
+.status-badge.pending { color: var(--forge-amber); border-color: var(--forge-amber); background: rgba(245, 166, 35, 0.1); }
+.status-badge.done    { color: var(--forge-steel); border-color: var(--forge-steel); background: rgba(138, 155, 168, 0.1); }
+
+/* ============================================================
+   15. RESERVATION CARDS (CLIENTE)
+============================================================ */
+.reservation-card {
+    background: var(--forge-panel);
+    border: 1px solid var(--forge-border);
+    padding: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeIn 0.4s ease both;
+    transition: border-color 0.2s;
+}
+
+.reservation-card:hover { border-color: rgba(245, 166, 35, 0.3); }
+
+.reservation-card h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    color: var(--forge-amber);
+}
+
+.res-meta             { display: flex; flex-direction: column; gap: 6px; }
+.res-meta-row         { display: flex; gap: 8px; align-items: center; font-size: 0.8rem; color: var(--forge-muted); }
+.res-meta-row strong  { color: var(--forge-text); }
+
+.res-total {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 1px;
+    color: var(--forge-green);
+    padding: 8px 0;
+    border-top: 1px solid var(--forge-border);
+    border-bottom: 1px solid var(--forge-border);
+}
+
+.res-total span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--forge-muted);
+    margin-left: 8px;
+    letter-spacing: 1px;
+}
+
+/* ============================================================
+   16. PROVIDER ORDER CARDS
+============================================================ */
+.provider-order-card {
+    background: var(--forge-panel);
+    border: 1px solid var(--forge-border);
+    padding: 1.4rem;
+    animation: fadeIn 0.4s ease both;
+    transition: border-color 0.2s;
+}
+
+.provider-order-card:hover { border-color: rgba(245, 166, 35, 0.4); }
+
+.provider-order-card h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    color: var(--forge-amber);
+    margin-bottom: 10px;
+}
+
+.order-id-tag {
+    float: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--forge-muted);
+    background: var(--forge-card);
+    border: 1px solid var(--forge-border);
+    padding: 3px 8px;
+}
+
+.order-details             { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; font-size: 0.82rem; color: var(--forge-muted); }
+.order-details strong      { color: var(--forge-text); }
+.order-details .gain-value { color: var(--forge-green); font-weight: 700; }
+
+/* ============================================================
+   17. MODALS
+============================================================ */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    animation: fadeModal 0.2s ease;
+}
+
+.modal.show { display: flex; }
+
+.modal-content {
+    background: var(--forge-panel);
+    border: 1px solid var(--forge-border);
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-header {
+    background: var(--forge-card);
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--forge-border);
+    position: relative;
+}
+
+.modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--forge-amber);
+}
+
+.modal-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+    color: var(--forge-text);
+}
+
+.modal-header p {
+    font-size: 0.78rem;
+    color: var(--forge-amber);
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.modal-body { padding: 2rem; }
+
+.close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1.2rem;
+    font-size: 1.5rem;
+    color: var(--forge-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+    line-height: 1;
+    background: none;
+    border: none;
+}
+
+.close-btn:hover { color: var(--forge-amber); }
+
+/* ============================================================
+   18. STATE MESSAGES (EMPTY / LOADER)
+============================================================ */
+.state-message {
+    padding: 3rem 2rem;
+    text-align: center;
+    color: var(--forge-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1px dashed var(--forge-border);
+}
+
+.state-message .state-icon {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+}
+
+.pulse { animation: pulse 1.5s ease-in-out infinite; }
+
+/* ============================================================
+   19. TOAST NOTIFICATIONS
+============================================================ */
+#toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--forge-card);
+    border: 1px solid var(--forge-border);
+    border-left: 3px solid;
+    padding: 14px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--forge-text);
+    max-width: 320px;
+    animation: toastIn 0.3s ease both;
+}
+
+.toast.success { border-left-color: var(--forge-green); }
+.toast.error   { border-left-color: var(--forge-red); }
+.toast.info    { border-left-color: var(--forge-amber); }
+
+/* ============================================================
+   20. SCROLLBAR
+============================================================ */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--forge-dark); }
+::-webkit-scrollbar-thumb { background: var(--forge-border); }
+::-webkit-scrollbar-thumb:hover { background: var(--forge-amber); }
+
+/* ============================================================
+   21. RESPONSIVE
+============================================================ */
+@media (max-width: 768px) {
+    .panel-header  { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .tools-grid    { grid-template-columns: 1fr; }
+    .stats-grid    { grid-template-columns: 1fr 1fr; }
+    .input-row     { grid-template-columns: 1fr; }
+    main#content   { padding: 1.5rem 4%; }
+    .panel-actions { flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .auth-card  { margin: 1rem; }
 }

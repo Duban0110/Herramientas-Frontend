@@ -3,121 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RentaTools - Sistema de Gestión</title>
+    <title>RentaTools — Sistema de Gestión</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Estilos de la aplicación -->
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
+    <!-- AUTH -->
     <div id="auth-wrapper">
+
         <div id="login-container" class="auth-card">
-            <h1>Bienvenido</h1>
-            <p>Ingresa para gestionar tus herramientas</p>
-            <form id="login-form">
-                <div class="input-group">
-                    <label>Correo Electrónico</label>
-                    <input type="email" id="email" required placeholder="tu@correo.com">
-                </div>
-                <div class="input-group">
-                    <label>Contraseña</label>
-                    <input type="password" id="password" required placeholder="••••••••">
-                </div>
-                <button type="submit" class="btn-primary">Iniciar Sesión</button>
-                <p style="margin-top:15px;">¿No tienes cuenta? <a href="#" onclick="toggleAuth(true)">Regístrate</a></p>
-            </form>
+            <div class="auth-header">
+                <h1>Bienvenido</h1>
+                <p>// Acceso al sistema de gestión</p>
+            </div>
+            <div class="auth-body">
+                <form id="login-form">
+                    <div class="input-group">
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="email" required placeholder="usuario@correo.com">
+                    </div>
+                    <div class="input-group">
+                        <label>Contraseña</label>
+                        <input type="password" id="password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn-primary">Iniciar Sesión</button>
+                    <p class="auth-toggle">
+                        ¿No tienes cuenta? <a href="#" onclick="toggleAuth(true)">Regístrate</a>
+                    </p>
+                </form>
+            </div>
         </div>
 
-        <div id="register-container" class="auth-card" style="display: none;">
-            <h1>Crear Cuenta</h1>
-            <p>Regístrate como Cliente o Proveedor</p>
-            <form id="register-form">
-                <div style="display: flex; gap: 10px; margin-bottom: 0px;">
-                    <div class="input-group">
-                        <input type="text" id="reg-nombre" placeholder="Nombre" required>
+        <div id="register-container" class="auth-card" style="display:none;">
+            <div class="auth-header">
+                <h1>Crear Cuenta</h1>
+                <p>// Elige tu rol en la plataforma</p>
+            </div>
+            <div class="auth-body">
+                <form id="register-form">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Nombre</label>
+                            <input type="text" id="reg-nombre" placeholder="Juan" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Apellido</label>
+                            <input type="text" id="reg-apellido" placeholder="Pérez" required>
+                        </div>
                     </div>
                     <div class="input-group">
-                        <input type="text" id="reg-apellido" placeholder="Apellido" required>
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="reg-correo" placeholder="tu@correo.com" required>
                     </div>
-                </div>
-                
-                <div class="input-group">
-                    <input type="email" id="reg-correo" placeholder="Correo electrónico" required>
-                </div>
-                <div class="input-group">
-                    <input type="password" id="reg-pass" placeholder="Contraseña" required>
-                </div>
-                <div class="input-group">
-                    <label>Rol de Usuario</label>
-                    <select id="reg-rol">
-                        <option value="CLIENTE">Cliente</option>
-                        <option value="PROVEEDOR">Proveedor</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn-primary">Crear Cuenta</button>
-                <p style="margin-top:15px;">¿Ya tienes cuenta? <a href="#" onclick="toggleAuth(false)">Inicia Sesión</a></p>
-            </form>
+                    <div class="input-group">
+                        <label>Contraseña</label>
+                        <input type="password" id="reg-pass" placeholder="••••••••" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Rol de Usuario</label>
+                        <select id="reg-rol">
+                            <option value="CLIENTE">Cliente — Alquilar equipos</option>
+                            <option value="PROVEEDOR">Proveedor — Publicar inventario</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-primary">Crear Cuenta</button>
+                    <p class="auth-toggle">
+                        ¿Ya tienes cuenta? <a href="#" onclick="toggleAuth(false)">Inicia Sesión</a>
+                    </p>
+                </form>
+            </div>
         </div>
+
     </div>
 
-    <div id="dashboard-container" style="display: none; width: 100%;">
+    <!-- DASHBOARD -->
+    <div id="dashboard-container">
         <nav class="navbar">
-            <div class="nav-brand">RENTA<span>TOOLS</span></div>
+            <div class="nav-brand">RENTA<span class="brand-accent">TOOLS</span></div>
             <div class="nav-user">
                 <span id="user-info">Cargando...</span>
                 <button onclick="logout()" class="btn-logout">Salir</button>
             </div>
         </nav>
-        
         <main id="content"></main>
     </div>
 
+    <!-- MODAL: Reserva -->
     <div id="modal-reserva" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="cerrarModal()">&times;</span>
-            <h2>Confirmar Reserva</h2>
-            <p id="reserva-tool-name" style="font-weight: 600; color: var(--primary); margin-bottom: 15px;"></p>
-            <form id="reserva-form">
-                <input type="hidden" id="reserva-tool-id">
-                <div class="input-group">
-                    <label>Fecha de Inicio</label>
-                    <input type="date" id="fecha-inicio" required>
-                </div>
-                <div class="input-group">
-                    <label>Fecha de Devolución</label>
-                    <input type="date" id="fecha-fin" required>
-                </div>
-                <button type="submit" class="btn-primary">Confirmar Alquiler</button>
-            </form>
+            <div class="modal-header">
+                <button class="close-btn" onclick="cerrarModal()">×</button>
+                <h2>Confirmar Reserva</h2>
+                <p id="reserva-tool-name">Herramienta seleccionada</p>
+            </div>
+            <div class="modal-body">
+                <form id="reserva-form">
+                    <input type="hidden" id="reserva-tool-id">
+                    <div class="input-group">
+                        <label>Fecha de Inicio</label>
+                        <input type="date" id="fecha-inicio" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Fecha de Devolución</label>
+                        <input type="date" id="fecha-fin" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Confirmar Alquiler</button>
+                </form>
+            </div>
         </div>
     </div>
 
+    <!-- MODAL: Herramienta (fallback) -->
     <div id="modal-herramienta" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="cerrarModalHerramienta()">&times;</span>
-            <h2>Publicar Nueva Herramienta</h2>
-            <form id="herramienta-form" style="margin-top:15px;">
-                <div class="input-group">
-                    <label>Nombre de la Herramienta</label>
-                    <input type="text" id="h-nombre" placeholder="Ej: Taladro Percutor" required>
-                </div>
-                <div class="input-group">
-                    <label>Descripción</label>
-                    <input type="text" id="h-desc" placeholder="Detalles técnicos..." required>
-                </div>
-                <div style="display: flex; gap: 10px;">
+            <div class="modal-header">
+                <button class="close-btn" onclick="cerrarModalHerramienta()">×</button>
+                <h2>Publicar Equipo</h2>
+                <p>// Nueva entrada de inventario</p>
+            </div>
+            <div class="modal-body">
+                <form id="herramienta-form">
                     <div class="input-group">
-                        <label>Precio por Día</label>
-                        <input type="number" id="h-precio" step="0.01" placeholder="0.00" required>
+                        <label>Nombre del Equipo</label>
+                        <input type="text" id="h-nombre" placeholder="Ej: Taladro Percutor 800W" required>
                     </div>
                     <div class="input-group">
-                        <label>Stock Inicial</label>
-                        <input type="number" id="h-stock" placeholder="1" required>
+                        <label>Descripción Técnica</label>
+                        <input type="text" id="h-desc" placeholder="Potencia, modelo, accesorios..." required>
                     </div>
-                </div>
-                <button type="submit" class="btn-primary" style="background:var(--success);">Guardar y Publicar</button>
-            </form>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Precio/Día ($)</label>
+                            <input type="number" id="h-precio" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Stock</label>
+                            <input type="number" id="h-stock" placeholder="1" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Guardar y Publicar</button>
+                </form>
+            </div>
         </div>
     </div>
+
+    <!-- TOASTS -->
+    <div id="toast-container"></div>
 
     <script src="js/app.js"></script>
 </body>

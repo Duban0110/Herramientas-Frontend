@@ -1,31 +1,48 @@
+/* ============================================================
+   RENTATOOLS — app.js
+   Lógica principal: Auth, Router, API calls, UI helpers
+============================================================ */
+
 const API_URL = "http://localhost:8081/api";
 
-/**
- * --- GESTIÓN DE INTERFAZ Y NAVEGACIÓN ---
- */
+/* ============================================================
+   MÓDULO: TOAST NOTIFICATIONS
+   Reemplaza los alert() nativos del navegador
+============================================================ */
+function notify(msg, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+}
 
-// Alterna entre los formularios de Login y Registro
+/* ============================================================
+   MÓDULO: AUTENTICACIÓN — toggle login/registro
+============================================================ */
 window.toggleAuth = function (showRegister) {
-    const loginCont = document.getElementById('login-container');
-    const regCont = document.getElementById('register-container');
-    if (loginCont && regCont) {
-        loginCont.style.display = showRegister ? 'none' : 'block';
-        regCont.style.display = showRegister ? 'block' : 'none';
-    }
+    document.getElementById('login-container').style.display    = showRegister ? 'none'  : 'block';
+    document.getElementById('register-container').style.display = showRegister ? 'block' : 'none';
 };
 
-// Controla la visibilidad del dashboard y limpia residuos de modales
+/* ============================================================
+   MÓDULO: DASHBOARD — arranque y sesión
+============================================================ */
 function mostrarDashboard() {
-    document.getElementById('auth-wrapper').style.display = 'none';
-    document.getElementById('dashboard-container').style.display = 'block';
+    document.getElementById('auth-wrapper').style.display        = 'none';
+    document.getElementById('dashboard-container').style.display = 'flex';
+    document.getElementById('dashboard-container').style.flexDirection = 'column';
 
-    const rol = localStorage.getItem('rol');
+    const rol  = localStorage.getItem('rol');
     const user = localStorage.getItem('username');
-    document.getElementById('user-info').innerText = `${user} (${rol})`;
 
-    // Asegura que los modales inicien cerrados al cargar la vista
-    if (document.getElementById('modal-reserva')) window.cerrarModal();
-    if (document.getElementById('modal-herramienta')) window.cerrarModalHerramienta();
+    document.getElementById('user-info').innerHTML =
+        `${user} <span class="badge-rol">${rol}</span>`;
+
+    // Asegura que los modales arranquen cerrados
+    cerrarModal();
+    cerrarModalHerramienta();
 
     cargarVistaPorRol(rol);
 }
@@ -35,581 +52,633 @@ window.logout = function () {
     location.reload();
 };
 
-/**
- * --- AUTENTICACIÓN Y REGISTRO ---
- */
+/* ============================================================
+   MÓDULO: ROUTER — carga de vistas por rol
+============================================================ */
+function cargarVistaPorRol(rol) {
+    const content = document.getElementById('content');
+    if (!content) return;
 
+    // Normaliza el rol para el switch
+    const userRol = rol.startsWith('ROLE_') ? rol : `ROLE_${rol}`;
+    let html     = '';
+    let callback = null;
+
+    switch (userRol) {
+
+        /* ---- ADMINISTRADOR ---- */
+        case 'ROLE_ADMINISTRADOR':
+            html = `
+            <section>
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Control de <span>Gestión</span></div>
+                        <div class="panel-subtitle">// Panel administrativo del sistema</div>
+                    </div>
+                    <div class="panel-actions">
+                        <button onclick="window.verDashboardAdmin()" class="btn-secondary active" id="btn-reportes">Reportes Globales</button>
+                        <button onclick="window.listarUsuarios()"    class="btn-secondary"        id="btn-usuarios">Base de Usuarios</button>
+                    </div>
+                </div>
+                <div id="data-display"></div>
+            </section>`;
+            callback = () => window.verDashboardAdmin();
+            break;
+
+        /* ---- PROVEEDOR ---- */
+        case 'ROLE_PROVEEDOR':
+            html = `
+            <section>
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Gestión de <span>Inventario</span></div>
+                        <div class="panel-subtitle">// Equipos publicados y alquileres activos</div>
+                    </div>
+                    <div class="panel-actions">
+                        <button onclick="window.verEntregasPendientes()" class="btn-secondary" id="btn-alquileres">Ver Alquileres</button>
+                        <button onclick="window.abrirModalHerramienta()" class="btn-secondary">+ Publicar Equipo</button>
+                    </div>
+                </div>
+                <div id="data-display" class="tools-grid"></div>
+            </section>
+
+            <!-- Modal exclusivo del proveedor (inyectado dinámicamente) -->
+            <div id="modal-herramienta-proveedor" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button class="close-btn" onclick="window.cerrarModalHerramienta()">×</button>
+                        <h2>Nueva Entrada de Equipo</h2>
+                        <p>// Publicar en el catálogo</p>
+                    </div>
+                    <div class="modal-body">
+                        <form id="herramienta-form-proveedor">
+                            <div class="input-group">
+                                <label>Nombre del Equipo</label>
+                                <input type="text" id="hp-nombre" placeholder="Ej. Mezcladora de Cemento" required>
+                            </div>
+                            <div class="input-group">
+                                <label>Especificaciones Técnicas</label>
+                                <textarea id="hp-desc" placeholder="Detalles de potencia, capacidad, etc." style="min-height:80px; resize:vertical;"></textarea>
+                            </div>
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label>Tarifa Diaria ($)</label>
+                                    <input type="number" id="hp-precio" placeholder="0.00" required>
+                                </div>
+                                <div class="input-group">
+                                    <label>Unidades Stock</label>
+                                    <input type="number" id="hp-stock" placeholder="1" required>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>URL de Imagen</label>
+                                <input type="text" id="hp-imagen" placeholder="https://...">
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button type="submit" class="btn-primary" style="flex:2;">Confirmar Publicación</button>
+                                <button type="button" onclick="window.cerrarModalHerramienta()" class="btn-cancel" style="flex:1;">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>`;
+            callback = () => window.cargarHerramientas();
+            break;
+
+        /* ---- CLIENTE (default) ---- */
+        default:
+            html = `
+            <section>
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Catálogo de <span>Equipos</span></div>
+                        <div class="panel-subtitle">// Herramientas disponibles para alquiler</div>
+                    </div>
+                    <div class="panel-actions">
+                        <button onclick="window.cargarHerramientas()" class="btn-secondary active" id="btn-catalogo">Explorar Equipos</button>
+                        <button onclick="window.verMisReservas()"      class="btn-secondary"        id="btn-misreservas">Mis Alquileres</button>
+                    </div>
+                </div>
+                <div id="herramientas-grid" class="tools-grid"></div>
+            </section>`;
+            callback = () => window.cargarHerramientas();
+            break;
+    }
+
+    content.innerHTML = html;
+    if (callback) setTimeout(callback, 50);
+}
+
+/* ============================================================
+   MÓDULO: AUTH — Login
+============================================================ */
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const correo = document.getElementById('email').value;
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.textContent = 'Verificando...';
+    btn.disabled = true;
+
+    const correo     = document.getElementById('email').value;
     const contrasena = document.getElementById('password').value;
 
     try {
-        const response = await fetch(`${API_URL}/auth/login`, {
+        const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ correo, contrasena })
         });
 
-        if (response.ok) {
-            const data = await response.json();
+        if (res.ok) {
+            const data = await res.json();
             localStorage.setItem('jwt', data.token);
 
-            // Decodificación manual del Payload del JWT para extraer info del usuario
-            const payload = JSON.parse(window.atob(data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            // Decodificación manual del payload JWT
+            const payload = JSON.parse(
+                window.atob(data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+            );
 
             localStorage.setItem('usuarioId', payload.id || payload.userId || payload.sub);
-            localStorage.setItem('rol', (payload.roles ? payload.roles[0] : (payload.role || "")).replace("ROLE_", ""));
+            localStorage.setItem('rol', (payload.roles ? payload.roles[0] : (payload.role || '')).replace('ROLE_', ''));
             localStorage.setItem('username', payload.sub || correo);
 
-            alert("¡Bienvenido!");
+            notify('¡Acceso concedido!', 'success');
             mostrarDashboard();
         } else {
-            alert("Credenciales incorrectas.");
+            notify('Credenciales incorrectas.', 'error');
         }
-    } catch (error) { console.error("Error en login:", error); }
+    } catch (err) {
+        notify('Error de conexión con el servidor.', 'error');
+        console.error('Login error:', err);
+    } finally {
+        btn.textContent = 'Iniciar Sesión';
+        btn.disabled = false;
+    }
 });
 
+/* ============================================================
+   MÓDULO: AUTH — Registro
+============================================================ */
 document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.textContent = 'Creando...';
+    btn.disabled = true;
+
     const data = {
-        nombre: document.getElementById('reg-nombre').value,
-        apellido: document.getElementById('reg-apellido').value,
-        correo: document.getElementById('reg-correo').value,
+        nombre:     document.getElementById('reg-nombre').value,
+        apellido:   document.getElementById('reg-apellido').value,
+        correo:     document.getElementById('reg-correo').value,
         contrasena: document.getElementById('reg-pass').value,
-        rol: document.getElementById('reg-rol').value
+        rol:        document.getElementById('reg-rol').value
     };
+
     try {
         const res = await fetch(`${API_URL}/usuarios`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
+
         if (res.ok) {
-            alert("✅ Registro exitoso");
+            notify('Registro exitoso. Ahora inicia sesión.', 'success');
             window.toggleAuth(false);
+        } else {
+            notify('Error en el registro. Verifica los datos.', 'error');
         }
-    } catch (err) { console.error("Error en registro:", err); }
+    } catch (err) {
+        notify('Error de conexión.', 'error');
+        console.error('Register error:', err);
+    } finally {
+        btn.textContent = 'Crear Cuenta';
+        btn.disabled = false;
+    }
 });
 
-/**
- * --- ENRUTADOR DINÁMICO POR ROL ---
- */
-
-function cargarVistaPorRol(rol) {
-    const content = document.getElementById('content');
-    if (!content) return;
-
-    const userRol = rol.startsWith('ROLE_') ? rol : `ROLE_${rol}`;
-    let htmlContent = '';
-    let callback = null;
-
-    switch (userRol) {
-        case 'ROLE_ADMINISTRADOR':
-            htmlContent = `
-    <section class="admin-panel fade-in">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2rem; border-bottom:2px solid var(--primary); padding-bottom:1rem;">
-            <h2 style="text-transform:uppercase; font-weight:900; letter-spacing:1px;">🛡️ Control de Gestión</h2>
-            <div style="display:flex; gap:10px;">
-                <button onclick="window.verDashboardAdmin()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem;">📈 Reportes Globales</button>
-                <button onclick="window.listarUsuarios()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem; background:var(--accent);">👥 Base de Usuarios</button>
-            </div>
-        </div>
-        <div id="data-display">
-            <div class="loader" style="padding:20px; color:var(--primary); font-weight:bold;">Sincronizando datos...</div>
-        </div>
-    </section>`;
-callback = () => window.verDashboardAdmin();
-break;
-
-        case 'ROLE_PROVEEDOR':
-
-        htmlContent = `
-        <section class="proveedor-panel fade-in">
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2rem; border-bottom:2px solid var(--primary); padding-bottom:1rem;">
-                <h2 style="text-transform:uppercase; font-weight:900; letter-spacing:1px;">⚒️ Gestión de Inventario</h2>
-                <div style="display:flex; gap:10px;">
-                    <button onclick="window.verEntregasPendientes()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem;">Ver Alquileres</button>
-                    <button onclick="window.abrirModalHerramienta()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem; background:var(--accent);">+ Publicar Herramienta</button>
-                </div>
-            </div>
-            <div id="data-display" class="tools-grid">Cargando herramientas...</div>
-        </section>
-        
-        <div id="modal-herramienta-proveedor" class="modal">
-            <div class="modal-content" style="border-top: 8px solid var(--primary); border-radius: 0; background: var(--bg-card);">
-                <span class="close-btn" onclick="window.cerrarModalHerramienta()">&times;</span>
-                <h3 style="text-transform:uppercase; font-weight:900; margin-bottom:1.5rem; color:var(--primary);">Nueva Entrada de Equipo</h3>
-                
-                <form id="herramienta-form-proveedor">
-                    <div class="input-group">
-                        <label>Nombre del Equipo</label>
-                        <input type="text" id="hp-nombre" placeholder="Ej. Mezcladora de Cemento" required>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Especificaciones Técnicas</label>
-                        <textarea id="hp-desc" placeholder="Detalles de potencia, capacidad, etc." style="min-height:80px;"></textarea>
-                    </div>
-                    
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                        <div class="input-group">
-                            <label>Tarifa Diaria ($)</label>
-                            <input type="number" id="hp-precio" placeholder="0.00" required>
-                        </div>
-                        <div class="input-group">
-                            <label>Unidades Stock</label>
-                            <input type="number" id="hp-stock" placeholder="1" required>
-                        </div>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Enlace de Imagen</label>
-                        <input type="text" id="hp-imagen" placeholder="URL de la fotografía">
-                    </div>
-                    
-                    <div style="display:flex; gap:10px; margin-top:1rem;">
-                        <button type="submit" class="btn-primary" style="flex:2;">Confirmar Publicación</button>
-                        <button type="button" onclick="window.cerrarModalHerramienta()" class="btn-primary" style="background:var(--danger); flex:1;">Cancelar</button>
-                    </div>
-                </form>
-            </div>
-        </div>`;
-            callback = () => window.cargarHerramientas();
-            break;
-
-        default: // VISTA CLIENTE
-        htmlContent = `
-        <section class="cliente-panel fade-in">
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2rem; border-bottom:2px solid var(--primary); padding-bottom:1rem;">
-                <h2 style="text-transform:uppercase; font-weight:900; letter-spacing:1px;">⚒️ Catálogo de Equipos</h2>
-                <div style="display:flex; gap:10px;">
-                    <button onclick="window.cargarHerramientas()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem;">Explorar Equipos</button>
-                    <button onclick="window.verMisReservas()" class="btn-primary" style="width:auto; padding:0.6rem 1.2rem; background:var(--accent);">Mis Alquileres</button>
-                </div>
-            </div>
-            
-            <div id="herramientas-grid" class="tools-grid">
-                <div class="loader" style="padding:20px; color:var(--primary); font-weight:bold;">Localizando herramientas disponibles...</div>
-            </div>
-        </section>`;
-    callback = () => window.cargarHerramientas();
-    break;
-    }
-    content.innerHTML = htmlContent;
-    if (callback) setTimeout(callback, 50);
-}
-
-/**
- * --- GESTIÓN DE HERRAMIENTAS ---
- */
-
+/* ============================================================
+   MÓDULO: HERRAMIENTAS — Carga del catálogo
+============================================================ */
 window.cargarHerramientas = async function () {
     const token = localStorage.getItem('jwt');
-    const grid = document.getElementById('herramientas-grid') || document.getElementById('data-display');
+    const grid  = document.getElementById('herramientas-grid') || document.getElementById('data-display');
     if (!grid) return;
 
+    grid.innerHTML = estadoCargando('Localizando equipos disponibles...');
+
     try {
-        const response = await fetch(`${API_URL}/herramientas`, {
+        const res = await fetch(`${API_URL}/herramientas`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.ok) {
-            const herramientas = await response.json();
-            grid.innerHTML = herramientas.map(h => {
-                const imgSource = h.imagenUrl || 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?q=80&w=500';
-                const tieneStock = h.stock > 0;
+        if (res.ok) {
+            const herramientas = await res.json();
 
-                return `
-                <div class="tool-card" style="display: flex; flex-direction: column; background: var(--bg-card);">
-                    <div style="width:100%; height:180px; position:relative; overflow:hidden;">
-                        <img src="${imgSource}" 
-                            style="width:100%; height:100%; object-fit:cover; border-bottom:1px solid var(--border);" 
-                            onerror="this.src='https://via.placeholder.com/300x180?text=Equipo+Sin+Imagen'">
-                        
-                        <div style="position:absolute; top:12px; right:12px; padding:4px 10px; font-size:0.65rem; font-weight:900; text-transform:uppercase; color:white; background:${tieneStock ? 'var(--primary)' : 'var(--danger)'};">
-                            ${tieneStock ? 'En Stock' : 'Sin Stock'}
-                        </div>
-                    </div>
-                    
-                    <div class="tool-info" style="padding:1.5rem; flex-grow:1; display:flex; flex-direction:column;">
-                        <h3 style="margin:0; font-size:1rem; text-transform:uppercase; font-weight:800; color:var(--text-dark);">${h.nombre}</h3>
-                        <p style="font-size:0.8rem; color:var(--text-muted); margin:10px 0; height:40px; overflow:hidden; line-height:1.4;">
-                            ${h.descripcion || 'Sin especificaciones técnicas proporcionadas.'}
-                        </p>
-                        
-                        <div style="background: #f0f0e0; padding: 12px; margin-bottom: 15px; border-left: 4px solid var(--primary);">
-                            <span style="display:block; font-size:0.65rem; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px;">Tarifa Diaria</span>
-                            <span style="font-size:1.4rem; font-weight:900; color:var(--text-dark);">$${h.precioDia}</span>
-                        </div>
+            if (herramientas.length === 0) {
+                grid.innerHTML = estadoVacio('📦', 'No hay equipos registrados.');
+                return;
+            }
 
-                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:15px; text-transform:uppercase;">
-                            Cantidad: <span style="color:${tieneStock ? 'var(--primary)' : 'var(--danger)'};">${h.stock} Unidades</span>
-                        </div>
-                        
-                        <button onclick="window.prepararReserva(${h.id}, '${h.nombre}')" 
-                                class="btn-primary" 
-                                ${!tieneStock ? 'disabled' : ''}
-                                style="margin-top:auto; padding:0.8rem; font-size:0.75rem;">
-                            ${tieneStock ? 'SOLICITAR EQUIPO' : 'AGOTADO TEMPORALMENTE'}
-                        </button>
-                    </div>
-                </div>`;
-            }).join('');
+            grid.innerHTML = herramientas.map((h, i) => renderToolCard(h, i)).join('');
         }
-    } catch (e) { console.error("Error cargando herramientas:", e); }
+    } catch (err) {
+        grid.innerHTML = estadoError();
+        console.error('cargarHerramientas error:', err);
+    }
 };
 
-// Captura global para el formulario dinámico de herramientas
+/** Genera el HTML de una tool card */
+function renderToolCard(h, index) {
+    const img        = h.imagenUrl || 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?q=80&w=500';
+    const tieneStock = h.stock > 0;
+    const nombre     = h.nombre.replace(/'/g, "\\'");
+
+    return `
+    <div class="tool-card" style="animation-delay:${index * 0.05}s">
+        <div class="tool-card-img-wrapper">
+            <img class="tool-card-img"
+                src="${img}"
+                alt="${h.nombre}"
+                onerror="this.src='https://images.unsplash.com/photo-1504148455328-c376907d081c?q=80&w=500'">
+            <span class="stock-badge ${tieneStock ? 'in-stock' : 'out-stock'}">
+                ${tieneStock ? '▲ En Stock' : '■ Agotado'}
+            </span>
+        </div>
+        <div class="tool-info">
+            <h3>${h.nombre}</h3>
+            <p class="tool-desc">${h.descripcion || 'Sin especificaciones técnicas proporcionadas.'}</p>
+            <div class="tool-price-block">
+                <span class="price">$${h.precioDia}</span>
+                <span class="price-label">/ DÍA</span>
+            </div>
+            <div class="tool-stock-info">UNIDADES DISPONIBLES: ${h.stock}</div>
+            <button onclick="window.prepararReserva(${h.id}, '${nombre}')"
+                    class="btn-primary"
+                    style="margin-top:auto;"
+                    ${!tieneStock ? 'disabled' : ''}>
+                ${tieneStock ? 'SOLICITAR EQUIPO' : 'NO DISPONIBLE'}
+            </button>
+        </div>
+    </div>`;
+}
+
+/* ============================================================
+   MÓDULO: HERRAMIENTAS — Publicar (Proveedor)
+   Captura delegada porque el form es inyectado dinámicamente
+============================================================ */
 document.addEventListener('submit', async (e) => {
-    // Escuchamos el nuevo ID del formulario del proveedor
-    if (e.target && e.target.id === 'herramienta-form-proveedor') {
-        e.preventDefault();
-        const token = localStorage.getItem('jwt');
-        const usuarioId = localStorage.getItem('usuarioId');
-        
-        const stockVal = parseInt(document.getElementById('hp-stock').value);
+    if (!e.target || e.target.id !== 'herramienta-form-proveedor') return;
+    e.preventDefault();
 
-        const nuevaHerramienta = {
-            nombre: document.getElementById('hp-nombre').value,
-            descripcion: document.getElementById('hp-desc').value,
-            precioDia: parseFloat(document.getElementById('hp-precio').value),
-            stock: stockVal,
-            disponible: stockVal > 0,
-            imagenUrl: document.getElementById('hp-imagen').value || '',
-            proveedor: { id: parseInt(usuarioId) } // Importante: Enviamos el objeto proveedor
-        };
+    const token     = localStorage.getItem('jwt');
+    const usuarioId = localStorage.getItem('usuarioId');
+    const stockVal  = parseInt(document.getElementById('hp-stock').value);
 
-        try {
-            const response = await fetch(`${API_URL}/herramientas`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(nuevaHerramienta)
-            });
+    const nuevaHerramienta = {
+        nombre:      document.getElementById('hp-nombre').value,
+        descripcion: document.getElementById('hp-desc').value,
+        precioDia:   parseFloat(document.getElementById('hp-precio').value),
+        stock:       stockVal,
+        disponible:  stockVal > 0,
+        imagenUrl:   document.getElementById('hp-imagen').value || '',
+        proveedor:   { id: parseInt(usuarioId) }
+    };
 
-            if (response.ok) {
-                alert("✅ ¡Herramienta publicada!");
-                window.cerrarModalHerramienta();
-                window.cargarHerramientas(); // Recarga la lista
-            } else {
-                alert("Error al publicar. Revisa la consola.");
-            }
-        } catch (error) { console.error("Error al publicar:", error); }
+    try {
+        const res = await fetch(`${API_URL}/herramientas`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(nuevaHerramienta)
+        });
+
+        if (res.ok) {
+            notify('¡Equipo publicado exitosamente!', 'success');
+            window.cerrarModalHerramienta();
+            window.cargarHerramientas();
+        } else {
+            notify('Error al publicar. Verifica los datos.', 'error');
+        }
+    } catch (err) {
+        notify('Error de conexión.', 'error');
+        console.error('Publicar herramienta error:', err);
     }
 });
 
-/**
- * --- GESTIÓN DE RESERVAS Y PAGOS ---
- */
-
+/* ============================================================
+   MÓDULO: RESERVAS — Preparar y confirmar
+============================================================ */
 window.prepararReserva = function (id, nombre) {
     const modal = document.getElementById('modal-reserva');
     if (modal) {
-        document.getElementById('reserva-tool-id').value = id;
-        document.getElementById('reserva-tool-name').innerText = nombre;
-        modal.style.display = 'block';
+        document.getElementById('reserva-tool-id').value       = id;
+        document.getElementById('reserva-tool-name').textContent = nombre;
+        modal.classList.add('show');
     }
 };
 
 document.getElementById('reserva-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('jwt');
+    const token     = localStorage.getItem('jwt');
     const usuarioId = localStorage.getItem('usuarioId');
+
     const data = {
-        clienteId: parseInt(usuarioId),
+        clienteId:     parseInt(usuarioId),
         herramientaId: parseInt(document.getElementById('reserva-tool-id').value),
-        fechaInicio: document.getElementById('fecha-inicio').value,
-        fechaFin: document.getElementById('fecha-fin').value
+        fechaInicio:   document.getElementById('fecha-inicio').value,
+        fechaFin:      document.getElementById('fecha-fin').value
     };
+
     try {
-        const response = await fetch(`${API_URL}/reservas`, {
+        const res = await fetch(`${API_URL}/reservas`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(data)
         });
-        if (response.ok) {
-            alert("✅ Reserva exitosa.");
-            window.cerrarModal();
+
+        if (res.ok) {
+            notify('Reserva confirmada exitosamente.', 'success');
+            cerrarModal();
             window.cargarHerramientas();
+        } else {
+            notify('Error al confirmar la reserva.', 'error');
         }
-    } catch (err) { console.error("Error en reserva:", err); }
+    } catch (err) {
+        notify('Error de conexión.', 'error');
+        console.error('Reserva error:', err);
+    }
 });
 
+/* ============================================================
+   MÓDULO: RESERVAS — Descargar factura PDF
+============================================================ */
 window.procesarPagoYDescargarFactura = async function (reservaId, monto) {
     const token = localStorage.getItem('jwt');
     try {
-        const response = await fetch(`${API_URL}/reservas/pagar/descargar`, {
+        const res = await fetch(`${API_URL}/reservas/pagar/descargar`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ reservaId, monto })
         });
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
+
+        const blob = await res.blob();
+        const url  = window.URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
         a.download = `Factura_${reservaId}.pdf`;
         a.click();
-    } catch (error) { console.error("Error al descargar PDF:", error); }
-};
-
-/**
- * --- UTILIDADES DE MODALES Y CARGA INICIAL ---
- */
-
-window.abrirModalHerramienta = () => {
-    const modal = document.getElementById('modal-herramienta-proveedor') || document.getElementById('modal-herramienta');
-    if(modal) modal.style.display = 'block';
-};
-
-window.cerrarModalHerramienta = () => {
-    const modal = document.getElementById('modal-herramienta-proveedor') || document.getElementById('modal-herramienta');
-    if(modal) modal.style.display = 'none';
-};
-window.cerrarModal = () => document.getElementById('modal-reserva').style.display = 'none';
-
-window.onload = () => {
-    if (localStorage.getItem('jwt')) mostrarDashboard();
-};
-
-window.verMisReservas = async function () {
-    const token = localStorage.getItem('jwt');
-    const grid = document.getElementById('herramientas-grid');
-
-    if (!grid) return;
-
-    try {
-        grid.innerHTML = '<p style="color:white;">Cargando tus alquileres...</p>';
-
-        // CORRECCIÓN: Usamos el endpoint que sí funciona en Swagger
-        const response = await fetch(`${API_URL}/reservas/mis-reservas`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            const reservas = await response.json();
-            if (reservas.length === 0) {
-                grid.innerHTML = '<p style="color:white;">No tienes alquileres activos.</p>';
-                return;
-            }
-
-            // CORRECCIÓN: Usamos r.nombreHerramienta (como sale en tu JSON de Swagger)
-            grid.innerHTML = reservas.map(r => `
-                <div class="tool-card" style="background:#1e293b; border-radius:12px; padding:15px; border: 1px solid #334155; color:white;">
-                    <h3 style="color:#38bdf8;">${r.nombreHerramienta}</h3> 
-                    <p style="font-size: 0.9rem; color: #94a3b8;">Cliente: ${r.nombreCliente}</p>
-                    <hr style="border: 0.1px solid #334155; margin: 10px 0;">
-                    <p><strong>Desde:</strong> ${r.fechaInicio}</p>
-                    <p><strong>Hasta:</strong> ${r.fechaFin}</p>
-                    <p style="font-size: 1.2rem; color: #10b981; margin: 10px 0;"><strong>Total:</strong> $${r.total}</p>
-                    <span class="tool-status disponible" style="display:inline-block; margin-bottom:10px; background: #1e40af;">${r.estado}</span>
-                    <button onclick="window.procesarPagoYDescargarFactura(${r.id}, ${r.total})" class="btn-primary" style="background:#10b981; width:100%;">
-                        📄 Descargar Factura
-                    </button>
-                </div>
-            `).join('');
-        } else {
-            grid.innerHTML = `<p style="color:red;">Error del servidor: ${response.status}</p>`;
-        }
-    } catch (e) {
-        console.error("Error al ver reservas:", e);
-        grid.innerHTML = '<p style="color:red;">Error de conexión.</p>';
+        notify('Factura descargada.', 'success');
+    } catch (err) {
+        notify('Error al descargar la factura.', 'error');
+        console.error('Descargar factura error:', err);
     }
 };
 
-window.verEntregasPendientes = async function () {
+/* ============================================================
+   MÓDULO: MIS RESERVAS (Cliente)
+============================================================ */
+window.verMisReservas = async function () {
     const token = localStorage.getItem('jwt');
-    const grid = document.getElementById('data-display');
-
+    const grid  = document.getElementById('herramientas-grid');
     if (!grid) return;
 
+    // Actualiza estado de botones de navegación
+    document.getElementById('btn-catalogo')?.classList.remove('active');
+    document.getElementById('btn-misreservas')?.classList.add('active');
+
+    grid.innerHTML = estadoCargando('Cargando tus alquileres...');
+
     try {
-        grid.innerHTML = '<p style="color:white; padding:20px;">Cargando historial de alquileres...</p>';
-        
-        // CORRECCIÓN: Quitamos el ID de la URL porque el Backend lo saca del Token
-        const response = await fetch(`${API_URL}/reservas/proveedor`, {
-            headers: { 
+        const res = await fetch(`${API_URL}/reservas/mis-reservas`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            const reservas = await res.json();
+
+            if (reservas.length === 0) {
+                grid.innerHTML = estadoVacio('📋', 'No tienes alquileres registrados.');
+                return;
+            }
+
+            grid.innerHTML = reservas.map((r, i) => `
+            <div class="reservation-card" style="animation-delay:${i * 0.05}s">
+                <h3>${r.nombreHerramienta}</h3>
+                <div class="res-meta">
+                    <div class="res-meta-row"><strong>Cliente:</strong> ${r.nombreCliente}</div>
+                    <div class="res-meta-row">
+                        <strong>Desde:</strong> ${r.fechaInicio}
+                        &nbsp;→&nbsp;
+                        <strong>Hasta:</strong> ${r.fechaFin}
+                    </div>
+                    <div class="res-meta-row">
+                        <strong>Estado:</strong>
+                        <span class="status-badge ${resolverClaseEstado(r.estado)}">${r.estado}</span>
+                    </div>
+                </div>
+                <div class="res-total">$${r.total} <span>TOTAL</span></div>
+                <button onclick="window.procesarPagoYDescargarFactura(${r.id}, ${r.total})" class="btn-download">
+                    ↓ Descargar Factura PDF
+                </button>
+            </div>`).join('');
+        } else {
+            grid.innerHTML = estadoError(`Error del servidor: ${res.status}`);
+        }
+    } catch (err) {
+        grid.innerHTML = estadoError();
+        console.error('verMisReservas error:', err);
+    }
+};
+
+/* ============================================================
+   MÓDULO: ALQUILERES DEL PROVEEDOR
+============================================================ */
+window.verEntregasPendientes = async function () {
+    const token = localStorage.getItem('jwt');
+    const grid  = document.getElementById('data-display');
+    if (!grid) return;
+
+    document.getElementById('btn-alquileres')?.classList.add('active');
+    grid.className = 'tools-grid';
+    grid.innerHTML = estadoCargando('Cargando historial de alquileres...');
+
+    try {
+        const res = await fetch(`${API_URL}/reservas/proveedor`, {
+            headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
             }
         });
 
-        if (response.ok) {
-            const reservas = await response.json();
-            
+        if (res.ok) {
+            const reservas = await res.json();
+
             if (reservas.length === 0) {
-                grid.innerHTML = '<p style="color:white; padding:20px;">No hay alquileres registrados para tus herramientas.</p>';
+                grid.innerHTML = estadoVacio('📋', 'No hay alquileres para tus equipos.');
                 return;
             }
 
-            grid.innerHTML = reservas.map(r => `
-                <div class="tool-card" style="background:#1e293b; border-radius:12px; padding:15px; border: 1px solid #eab308; color:white;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <h3 style="color:#eab308; margin:0;">${r.nombreHerramienta}</h3>
-                        <span style="background:#334155; padding:4px 8px; border-radius:6px; font-size:0.75rem;">ID #${r.id}</span>
-                    </div>
-                    
-                    <div style="font-size:0.9rem; line-height:1.6;">
-                        <p>👤 <strong>Cliente:</strong> ${r.nombreCliente}</p>
-                        <p>📅 <strong>Periodo:</strong> ${r.fechaInicio} al ${r.fechaFin}</p>
-                        <p>💰 <strong>Ganancia Total:</strong> <span style="color:#10b981; font-weight:bold;">$${r.total}</span></p>
-                        <p>🏷️ <strong>Estado:</strong> ${r.estado}</p>
-                    </div>
-
-                    ${r.estado === 'ACTIVA' ? `
-                        <button onclick="window.confirmarDevolucion(${r.id})" 
-                                class="btn-primary" 
-                                style="background:#f59e0b; width:100%; margin-top:15px;">
-                            🔄 Confirmar Devolución
-                        </button>
-                    ` : ''}
+            grid.innerHTML = reservas.map((r, i) => `
+            <div class="provider-order-card" style="animation-delay:${i * 0.05}s">
+                <span class="order-id-tag">#${r.id}</span>
+                <h3>${r.nombreHerramienta}</h3>
+                <div class="order-details">
+                    <div>👤 <strong>Cliente:</strong> ${r.nombreCliente}</div>
+                    <div>📅 <strong>Periodo:</strong> ${r.fechaInicio} → ${r.fechaFin}</div>
+                    <div>💰 <strong>Ganancia:</strong> <span class="gain-value">$${r.total}</span></div>
+                    <div>Estado: <span class="status-badge ${resolverClaseEstado(r.estado)}">${r.estado}</span></div>
                 </div>
-            `).join('');
+                ${r.estado === 'ACTIVA' ? `
+                <button onclick="window.confirmarDevolucion(${r.id})" class="btn-confirm">
+                    ↺ Confirmar Devolución
+                </button>` : ''}
+            </div>`).join('');
         } else {
-            grid.innerHTML = `<p style="color:red; padding:20px;">Error: ${response.status} - No se pudo cargar la información.</p>`;
+            grid.innerHTML = estadoError(`Error ${res.status}`);
         }
-    } catch (e) {
-        console.error("Error en verEntregasPendientes:", e);
-        grid.innerHTML = '<p style="color:red; padding:20px;">Error de conexión.</p>';
+    } catch (err) {
+        grid.innerHTML = estadoError();
+        console.error('verEntregasPendientes error:', err);
     }
 };
 
 window.confirmarDevolucion = async function (reservaId) {
-    if (!confirm("¿Confirmas que la herramienta ha sido devuelta en buen estado?")) return;
+    if (!confirm('¿Confirmas que la herramienta ha sido devuelta en buen estado?')) return;
 
     const token = localStorage.getItem('jwt');
     try {
-        const response = await fetch(`${API_URL}/reservas/${reservaId}/devolucion`, {
-            method: 'PATCH', // O 'PUT' según como lo tengas en tu Controller
+        const res = await fetch(`${API_URL}/reservas/${reservaId}/devolucion`, {
+            method: 'PATCH',
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.ok) {
-            alert("✅ Devolución procesada. El stock se ha actualizado.");
-            window.verEntregasPendientes(); // Refrescar la lista
+        if (res.ok) {
+            notify('Devolución procesada. Stock actualizado.', 'success');
+            window.verEntregasPendientes();
         } else {
-            alert("Error al procesar la devolución.");
+            notify('Error al procesar la devolución.', 'error');
         }
-    } catch (e) {
-        console.error("Error:", e);
+    } catch (err) {
+        notify('Error de conexión.', 'error');
+        console.error('confirmarDevolucion error:', err);
     }
 };
 
-/**
- * --- GESTIÓN ADMINISTRATIVA ---
- */
-
-// Función para ver el resumen de reportes
+/* ============================================================
+   MÓDULO: ADMINISTRADOR — Dashboard y estadísticas
+============================================================ */
 window.verDashboardAdmin = async function () {
-    const token = localStorage.getItem('jwt');
+    const token   = localStorage.getItem('jwt');
     const display = document.getElementById('data-display');
     if (!display) return;
 
+    display.innerHTML = estadoCargando('Generando reporte global...');
+
     try {
-        display.innerHTML = '<p style="color:white; padding:20px;">Generando reporte global...</p>';
-        
-        // El endpoint debe coincidir con tu AdminController
-        const response = await fetch(`${API_URL}/admin/dashboard`, {
+        const res = await fetch(`${API_URL}/admin/dashboard`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.ok) {
-            const stats = await response.json();
+        if (res.ok) {
+            const stats = await res.json();
             display.innerHTML = `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; width: 100%; padding: 10px;">
-                    <div style="background: #1e293b; padding: 25px; border-radius: 12px; border-top: 4px solid #38bdf8; text-align: center;">
-                        <h4 style="color: #94a3b8; margin: 0; text-transform: uppercase; font-size: 0.8rem;">Herramientas Totales</h4>
-                        <p style="font-size: 2.5rem; color: white; margin: 10px 0; font-weight: bold;">${stats.totalHerramientas || 0}</p>
-                    </div>
-                    <div style="background: #1e293b; padding: 25px; border-radius: 12px; border-top: 4px solid #10b981; text-align: center;">
-                        <h4 style="color: #94a3b8; margin: 0; text-transform: uppercase; font-size: 0.8rem;">Alquileres Realizados</h4>
-                        <p style="font-size: 2.5rem; color: white; margin: 10px 0; font-weight: bold;">${stats.totalReservas || 0}</p>
-                    </div>
-                    <div style="background: #1e293b; padding: 25px; border-radius: 12px; border-top: 4px solid #f59e0b; text-align: center;">
-                        <h4 style="color: #94a3b8; margin: 0; text-transform: uppercase; font-size: 0.8rem;">Ingresos Totales</h4>
-                        <p style="font-size: 2.5rem; color: #10b981; margin: 10px 0; font-weight: bold;">$${stats.gananciasTotales || 0}</p>
-                    </div>
+            <div class="stats-grid">
+                <div class="stat-card amber">
+                    <div class="stat-label">Herramientas totales</div>
+                    <div class="stat-value">${stats.totalHerramientas || 0}</div>
+                    <div class="stat-icon">🔧</div>
                 </div>
-            `;
+                <div class="stat-card green">
+                    <div class="stat-label">Alquileres realizados</div>
+                    <div class="stat-value">${stats.totalReservas || 0}</div>
+                    <div class="stat-icon">📋</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-label">Ingresos totales</div>
+                    <div class="stat-value green">$${stats.gananciasTotales || 0}</div>
+                    <div class="stat-icon">💰</div>
+                </div>
+                <div class="stat-card steel">
+                    <div class="stat-label">Usuarios registrados</div>
+                    <div class="stat-value">${stats.totalUsuarios || '—'}</div>
+                    <div class="stat-icon">👥</div>
+                </div>
+            </div>`;
         } else {
-            display.innerHTML = `<p style="color:red; padding:20px;">Error al obtener estadísticas (Status: ${response.status}).</p>`;
+            display.innerHTML = estadoError(`Error ${res.status} al obtener estadísticas.`);
         }
-    } catch (e) {
-        console.error("Error en dashboard admin:", e);
-        display.innerHTML = '<p style="color:red; padding:20px;">Error de conexión con el servidor.</p>';
+    } catch (err) {
+        display.innerHTML = estadoError();
+        console.error('verDashboardAdmin error:', err);
     }
 };
 
-// Función para ver y gestionar usuarios
+/* ============================================================
+   MÓDULO: ADMINISTRADOR — Gestión de usuarios
+============================================================ */
 window.listarUsuarios = async function () {
-    const token = localStorage.getItem('jwt');
+    const token   = localStorage.getItem('jwt');
     const display = document.getElementById('data-display');
+    if (!display) return;
+
+    display.innerHTML = estadoCargando('Consultando base de usuarios...');
 
     try {
-        display.innerHTML = '<p style="color:white; padding:20px;">Consultando base de datos de usuarios...</p>';
-        const response = await fetch(`${API_URL}/usuarios`, {
+        const res = await fetch(`${API_URL}/usuarios`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.ok) {
-            const usuarios = await response.json();
+        if (res.ok) {
+            const usuarios = await res.json();
             display.innerHTML = `
-                <div style="overflow-x: auto; padding: 10px;">
-                    <table style="width: 100%; color: white; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden;">
-                        <thead style="background: #334155; color: #38bdf8;">
-                            <tr>
-                                <th style="padding: 15px; text-align: left;">ID</th>
-                                <th style="padding: 15px; text-align: left;">Usuario</th>
-                                <th style="padding: 15px; text-align: left;">Email</th>
-                                <th style="padding: 15px; text-align: left;">Rol</th>
-                                <th style="padding: 15px; text-align: center;">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${usuarios.map(u => `
-                                <tr style="border-bottom: 1px solid #334155; transition: 0.3s; cursor: default;">
-                                    <td style="padding: 15px;">#${u.id}</td>
-                                    <td style="padding: 15px; font-weight: bold;">${u.nombre} ${u.apellido}</td>
-                                    <td style="padding: 15px; color: #94a3b8;">${u.correo}</td>
-                                    <td style="padding: 15px;">
-                                        <span style="background: ${u.rol === 'ADMINISTRADOR' ? '#7c3aed' : '#2563eb'}; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">
-                                            ${u.rol}
-                                        </span>
-                                    </td>
-                                    <td style="padding: 15px; text-align: center;">
-                                        <button onclick="window.eliminarUsuario(${u.id})" 
-                                                style="background: #ef4444; border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
-                                            Eliminar
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
+            <div class="table-wrapper">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Correo</th>
+                            <th>Rol</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${usuarios.map(u => `
+                        <tr>
+                            <td class="user-id">#${u.id}</td>
+                            <td class="user-name">${u.nombre} ${u.apellido}</td>
+                            <td class="user-mail">${u.correo}</td>
+                            <td>
+                                <span class="status-badge ${u.rol === 'ADMINISTRADOR' ? 'pending' : u.rol === 'PROVEEDOR' ? 'active' : 'done'}">
+                                    ${u.rol}
+                                </span>
+                            </td>
+                            <td>
+                                <button onclick="window.eliminarUsuario(${u.id})" class="btn-danger">Eliminar</button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`;
         }
-    } catch (e) {
-        console.error("Error listando usuarios:", e);
+    } catch (err) {
+        display.innerHTML = estadoError();
+        console.error('listarUsuarios error:', err);
     }
 };
 
-// Función para eliminar usuario (Opcional pero recomendada)
 window.eliminarUsuario = async function (id) {
-    // 1. Mensaje de confirmación (Ventana emergente del navegador)
-    const confirmar = confirm("⚠️ ¿Estás seguro de que deseas eliminar a este usuario? \nEsta acción no se puede deshacer y podría fallar si el usuario tiene registros asociados.");
-
-    if (!confirmar) {
-        return; // Si el admin cancela, no hace nada
-    }
+    if (!confirm('⚠ ¿Eliminar este usuario? Esta acción es irreversible.')) return;
 
     const token = localStorage.getItem('jwt');
-
     try {
-        // 2. Petición al servidor
-        const response = await fetch(`${API_URL}/usuarios/${id}`, {
+        const res = await fetch(`${API_URL}/usuarios/${id}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -617,22 +686,87 @@ window.eliminarUsuario = async function (id) {
             }
         });
 
-        if (response.ok) {
-            alert("✅ Usuario eliminado exitosamente.");
-            
-            // 3. Refrescar la lista de usuarios automáticamente
-            if (typeof window.listarUsuarios === 'function') {
-                window.listarUsuarios();
-            }
-        } else if (response.status === 403) {
-            alert("🚫 No tienes permisos suficientes para realizar esta acción.");
+        if (res.ok) {
+            notify('Usuario eliminado.', 'success');
+            window.listarUsuarios();
+        } else if (res.status === 403) {
+            notify('Sin permisos para esta acción.', 'error');
         } else {
-            const errorData = await response.json().catch(() => ({}));
-            alert(`❌ No se pudo eliminar: ${errorData.message || 'El usuario tiene herramientas o reservas activas.'}`);
+            notify('No se pudo eliminar. El usuario puede tener registros activos.', 'error');
         }
-    } catch (error) {
-        console.error("Error al eliminar usuario:", error);
-        alert("conexión perdida con el servidor.");
+    } catch (err) {
+        notify('Error de conexión.', 'error');
+        console.error('eliminarUsuario error:', err);
     }
 };
 
+/* ============================================================
+   MÓDULO: MODALES — Abrir y cerrar
+============================================================ */
+window.abrirModalHerramienta = () => {
+    const modal = document.getElementById('modal-herramienta-proveedor')
+                || document.getElementById('modal-herramienta');
+    if (modal) modal.classList.add('show');
+};
+
+window.cerrarModalHerramienta = () => {
+    const modal = document.getElementById('modal-herramienta-proveedor')
+                || document.getElementById('modal-herramienta');
+    if (modal) modal.classList.remove('show');
+};
+
+window.cerrarModal = () => {
+    const modal = document.getElementById('modal-reserva');
+    if (modal) modal.classList.remove('show');
+};
+
+// Cierra cualquier modal al hacer click en el overlay
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('show');
+    }
+});
+
+/* ============================================================
+   MÓDULO: HELPERS DE UI — estados reutilizables
+============================================================ */
+
+/** Retorna el CSS class correcto según el estado de la reserva */
+function resolverClaseEstado(estado) {
+    const mapa = { 'ACTIVA': 'active', 'PENDIENTE': 'pending' };
+    return mapa[estado] || 'done';
+}
+
+/** HTML para el estado de carga */
+function estadoCargando(msg = 'Cargando...') {
+    return `
+    <div class="state-message" style="grid-column:1/-1;">
+        <span class="state-icon pulse">⚙</span>
+        ${msg}
+    </div>`;
+}
+
+/** HTML para estado vacío */
+function estadoVacio(icon, msg) {
+    return `
+    <div class="state-message" style="grid-column:1/-1;">
+        <span class="state-icon">${icon}</span>
+        ${msg}
+    </div>`;
+}
+
+/** HTML para estado de error */
+function estadoError(msg = 'Error de conexión con el servidor.') {
+    return `
+    <div class="state-message" style="grid-column:1/-1;">
+        <span class="state-icon">⚠</span>
+        ${msg}
+    </div>`;
+}
+
+/* ============================================================
+   INIT — Comprueba sesión activa al cargar la página
+============================================================ */
+window.onload = () => {
+    if (localStorage.getItem('jwt')) mostrarDashboard();
+};
